@@ -89,6 +89,17 @@
                    border: 1px solid var(--line); border-radius: 6px; font-size: 13px; }
     .jobs button:hover { border-color: var(--navy); }
 
+    .thread { list-style: none; margin: 0; padding: 0; }
+    .thread li + li { margin-top: 6px; }
+    .thread button { all: unset; box-sizing: border-box; cursor: pointer; display: block; width: 100%; padding: 8px 10px;
+                     border: 1px solid var(--line); border-radius: 6px; font-size: 13px; }
+    .thread button:hover { border-color: var(--navy); }
+    .thread button[aria-current="true"] { border: 2px solid var(--navy); padding: 7px 9px; cursor: default; }
+    .thread .t-top { display: flex; justify-content: space-between; gap: 8px; }
+    .thread .t-name { font-weight: 600; overflow-wrap: anywhere; }
+    .thread .t-tag { font-size: 11px; color: var(--grey); white-space: nowrap; }
+    .thread small { display: block; color: var(--grey); font-size: 12px; overflow-wrap: anywhere; }
+
     dl.tags { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; font-size: 12px; }
     dl.tags dt { color: var(--grey); }
     dl.tags dd { margin: 0; overflow-wrap: anywhere; }
@@ -105,6 +116,21 @@
     .primary:hover { filter: brightness(1.12); }
     .link { all: unset; box-sizing: border-box; cursor: pointer; display: block; width: 100%; margin-top: 10px; text-align: center;
             font-size: 13px; color: var(--navy); text-decoration: underline; text-underline-offset: 2px; }
+    .secondary { all: unset; box-sizing: border-box; cursor: pointer; display: inline-block; padding: 7px 14px;
+                 border: 1.5px solid var(--navy); border-radius: 6px; color: var(--navy); font: 600 13px var(--font); }
+    .secondary:hover { background: var(--wash); }
+    .secondary[disabled] { opacity: .5; cursor: default; }
+    .actions { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-top: 8px; }
+    .field { width: 100%; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--charcoal);
+             font: 13px/1.45 var(--font); padding: 7px 9px; }
+    textarea.field { resize: vertical; min-height: 84px; }
+    button.secondary:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+    select.field { padding: 6px 8px; }
+    .lbl { display: block; font-size: 12px; color: var(--grey); margin: 0 0 4px; }
+    .msg { font-size: 12px; margin-top: 8px; }
+    .msg.ok { color: var(--ok); font-weight: 600; }
+    .msg.err { color: var(--charcoal); border-left: 3px solid var(--red); padding-left: 8px; }
+    .status-edit { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
     .inline-link { all: unset; cursor: pointer; font-size: 12px; color: var(--navy); text-decoration: underline; text-underline-offset: 2px; margin-top: 8px; display: inline-block; }
     .icon-btn { all: unset; cursor: pointer; font-size: 12px; color: var(--grey); text-decoration: underline; text-underline-offset: 2px; }
     button:focus-visible, summary:focus-visible, input:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
@@ -157,11 +183,34 @@
     <button class="primary" id="primaryBtn" type="button" hidden></button>
     <button class="link" id="copyBtn" type="button">Copy email address</button>
 
+    <section class="section" id="threadSec" hidden>
+      <h2>On this email</h2>
+      <ul class="thread" id="thread"></ul>
+      <div class="muted" id="threadMore" style="margin-top:6px;font-size:12px" hidden></div>
+    </section>
+
     <!-- Filled in once a record is matched -->
     <div id="detail" hidden>
       <section class="section">
         <h2>Intake notes</h2>
         <div id="intake"><span class="muted">Loading…</span></div>
+      </section>
+      <section class="section">
+        <h2>Log a call or note</h2>
+        <form id="logForm">
+          <label class="lbl" for="logType">Type</label>
+          <select class="field" id="logType">
+            <option value="116391">Phone call</option>
+            <option value="116392">Incoming call</option>
+            <option value="116381">Note</option>
+            <option value="116389">Voicemail</option>
+            <option value="116416">Meeting</option>
+          </select>
+          <label class="lbl" for="logText" style="margin-top:10px">Notes</label>
+          <textarea class="field" id="logText" placeholder="What was discussed?"></textarea>
+          <div class="actions"><button class="secondary" type="submit" id="logSave">Save to Loxo</button></div>
+          <div class="msg" id="logMsg" role="status"></div>
+        </form>
       </section>
       <section class="section">
         <h2>Recent activity</h2>
@@ -194,7 +243,7 @@
 
 <script>
   // ---------- Config ----------
-  var PANEL_VERSION = "1.4 (data minimised)";
+  var PANEL_VERSION = "1.6 (status, intake editing, logging)";
   var LOXO_WEB = "https://pod2.app.loxo.co/agencies/40202";
 
   // From TomTom: Hedgerway's Loxo tag fields
@@ -211,6 +260,9 @@
     ["custom_hierarchy_10", "Contract", "bool"]
   ];
   var STATUS_FIELD = "custom_hierarchy_25";
+  // From TomTom: Hedgerway's candidate statuses and their Loxo IDs
+  var STATUSES = [["Active",160228],["Passive",160229],["Immediate",160232],["Under Offer",160281],["Placed",160234],
+                  ["Inactive",160230],["Abroad",160231],["Sponsored",160233],["Competitor Booking",160235],["STOP LIST",160241]];
 
   // From TomTom: Loxo activity types
   var ACTIVITY_TYPES = {
@@ -346,6 +398,22 @@
     }, function () { throw { kind: "network" }; });
   }
 
+  function loxoWrite(method, path, body) {
+    return fetch(workerBase() + path, {
+      method: method,
+      headers: { Authorization: authHeader(), "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    }).then(function (r) {
+      if (r.ok) return r.json().catch(function () { return {}; });
+      return r.text().then(function (t) {
+        if (r.status === 401) throw { kind: "auth", message: "Loxo rejected the API key." };
+        if (r.status === 404 || r.status === 405) throw { kind: "worker-old", message: "The Worker is out of date. Paste the latest worker.js into Cloudflare." };
+        if (r.status === 429) throw { kind: "http", message: "Loxo is busy. Wait a few seconds and try again." };
+        throw { kind: "http", message: (t && t.length < 120 ? t : "Loxo returned an error (" + r.status + ")") + "." };
+      });
+    }, function () { throw { kind: "network", message: "Couldn't reach the Worker." }; });
+  }
+
   function loxoGraphQL(query, variables) {
     return fetch(workerBase() + "/graphql", {
       method: "POST",
@@ -376,8 +444,14 @@
     }, function () { users = users || {}; return users; });
   }
 
+  var pending = {};
   function lookupInLoxo(email) {
     if (cache[email]) return Promise.resolve(cache[email]);
+    if (pending[email]) return pending[email];
+    pending[email] = doLookup(email).then(function (r) { delete pending[email]; return r; }, function (e) { delete pending[email]; throw e; });
+    return pending[email];
+  }
+  function doLookup(email) {
     var target = email.toLowerCase();
     var queries = ['"' + email + '"', email];
     var lastPeople = [];
@@ -392,13 +466,13 @@
         if (!people.length) return attempt(i + 1);
         lastPeople = people;
         var hit = people.find(function (p) { return personEmails(p).indexOf(target) !== -1; });
-        if (hit) return { status: "match", id: hit.id };
+        if (hit) return { status: "match", id: hit.id, summary: personSummary(hit) };
         var top = people.filter(function (p) { return !personEmails(p).length; }).slice(0, 5);
         if (!top.length) return attempt(i + 1);
         return Promise.all(top.map(function (p) { return getRecord(p.id).catch(function () { return null; }); }))
           .then(function (full) {
             var exact = full.filter(Boolean).find(function (p) { return personEmails(p).indexOf(target) !== -1; });
-            return exact ? { status: "match", id: exact.id } : attempt(i + 1);
+            return exact ? { status: "match", id: exact.id, summary: personSummary(exact) } : attempt(i + 1);
           });
       });
     }
@@ -426,17 +500,68 @@
   }
   function searchLoxo() { openUrl(LOXO_WEB + "/people?query=" + encodeURIComponent(current.name || current.email)); }
 
+  function statusEditHtml(s) {
+    return '<div class="status-edit" id="statusEdit" hidden>' +
+      '<label class="lbl" for="statusSel">Candidate status</label>' +
+      '<select class="field" id="statusSel">' + STATUSES.map(function (st) {
+        return '<option value="' + st[1] + '"' + (st[0].toLowerCase() === (s.status || "").toLowerCase() ? " selected" : "") + ">" + esc(st[0]) + "</option>";
+      }).join("") + "</select>" +
+      '<div class="actions"><button class="secondary" type="button" id="statusSave" disabled>Change status</button>' +
+      '<button class="inline-link" type="button" id="statusCancel" style="margin-top:0">Cancel</button></div></div>' +
+      '<div class="msg" id="statusMsg" role="status"></div>';
+  }
+
+  function wireStatusEdit(s) {
+    var open = $("statusOpen"), box = $("statusEdit"), sel = $("statusSel"), save = $("statusSave");
+    if (!open) return;
+    function label() {
+      var opt = sel.options[sel.selectedIndex];
+      var same = opt.text.toLowerCase() === (s.status || "").toLowerCase();
+      save.disabled = same;
+      save.textContent = same ? "Change status" : "Change to " + opt.text;
+    }
+    open.onclick = function () { box.hidden = false; open.hidden = true; $("statusMsg").textContent = ""; label(); sel.focus(); };
+    $("statusCancel").onclick = function () { box.hidden = true; open.hidden = false; };
+    sel.onchange = label;
+    save.onclick = function () {
+      var id = parseInt(sel.value, 10), name = sel.options[sel.selectedIndex].text;
+      var personId = s.id, token = current.token;
+      save.disabled = true; save.textContent = "Saving…";
+      loxoWrite("PUT", "/people/" + personId + "/status", { status_id: id }).then(function () {
+        if (recordCache[personId]) recordCache[personId][STATUS_FIELD] = [{ value: name, id: id }];
+        if (token !== current.token) return;
+        var p = recordCache[personId];
+        var ns = p ? personSummary(p) : s;
+        if (!p) ns.status = name;
+        if (cache[current.email]) { cache[current.email].summary = ns; renderThread(); }
+        showCard(ns);
+        $("statusMsg").className = "msg ok"; $("statusMsg").textContent = "Status changed to " + name + ".";
+      }, function (err) {
+        if (token !== current.token) return;
+        label();
+        $("statusMsg").className = "msg err"; $("statusMsg").textContent = "Status not changed. " + err.message;
+      });
+    };
+  }
+
+  function showCard(s) {
+    $("loxo").innerHTML = recordHtml(s);
+    wireStatusEdit(s);
+  }
+
   function recordHtml(s) {
     var pills = [];
     if (s.status) pills.push('<span class="pill status">' + esc(s.status) + "</span>");
     if (s.owner) pills.push('<span class="pill">Owner: ' + esc(s.owner) + "</span>");
+    var canStatus = /candidate/i.test(s.type) || s.status;
     var facts = [["Location", s.location], ["Salary", s.salary], ["Updated", s.updated], ["Emails", s.emails.join(", ")]]
       .filter(function (f) { return f[1]; });
     return '<div class="rec-type">' + esc(s.type) + " in Loxo</div>" +
       '<div class="rec-name">' + esc(s.name) + "</div>" +
       (s.role ? '<div class="rec-role">' + esc(s.role) + "</div>" : "") +
       (pills.length ? '<div class="pills">' + pills.join("") + "</div>" : "") +
-      (facts.length ? '<dl class="facts">' + facts.map(function (f) { return "<dt>" + esc(f[0]) + "</dt><dd>" + esc(f[1]) + "</dd>"; }).join("") + "</dl>" : "");
+      (facts.length ? '<dl class="facts">' + facts.map(function (f) { return "<dt>" + esc(f[0]) + "</dt><dd>" + esc(f[1]) + "</dd>"; }).join("") + "</dl>" : "") +
+      (canStatus ? '<button class="inline-link" type="button" id="statusOpen">Change status</button>' + statusEditHtml(s) : "");
   }
 
   // ---------- Rendering: detail sections ----------
@@ -483,26 +608,110 @@
     return doc.body.innerHTML;
   }
 
+  // ---------- Intake notes: read and edit (TomTom's format and freshness check) ----------
+  var NOTE_UPDATE = "mutation updateNote($noteInput: NoteInputType!) { updateNote(noteInput: $noteInput) { id: _id } }";
+  var intake = { personId: null, noteId: null, body: "" };
+
+  function intakeHtmlToText(html) {
+    var doc = new DOMParser().parseFromString(html || "", "text/html"), lines = [];
+    doc.body.childNodes.forEach(function (n) {
+      if (n.nodeType === 1) lines.push(n.textContent.replace(/\u00a0/g, " ").replace(/\s+$/, ""));
+      else if (n.nodeType === 3) { var t = n.textContent.replace(/\u00a0/g, " ").trim(); if (t) lines.push(t); }
+    });
+    return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  }
+  function intakeTextToHtml(text) {
+    var style = "font-family: Arial; margin: 0px;";
+    return (text || "").split("\n").map(function (line) {
+      var safe = line.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      return '<p style="' + style + '">' + (safe || "<br>") + "</p>";
+    }).join("");
+  }
+  function readNote(id) {
+    return loxoGraphQL(INTAKE_QUERY, { id: id }).then(function (j) {
+      return (j && j.data && j.data.person && j.data.person.note) || null;
+    });
+  }
+
+  function renderIntakeRead(msg) {
+    var box = $("intake");
+    var has = intake.body.replace(/<[^>]*>/g, "").trim();
+    box.innerHTML = (has ? '<div class="intake" id="intakeBody">' + sanitiseHtml(intake.body) + "</div>"
+                         : '<span class="muted">No intake notes yet.' + (intake.noteId ? "" : " Create the first one in Loxo.") + "</span>") +
+      '<div class="actions" id="intakeActions"></div><div class="msg" id="intakeMsg" role="status"></div>';
+    var actions = $("intakeActions");
+    var el = $("intakeBody");
+    if (el && el.scrollHeight > 200) {
+      el.classList.add("clamped");
+      var more = document.createElement("button");
+      more.className = "inline-link"; more.type = "button"; more.textContent = "Show all"; more.style.marginTop = "0";
+      more.onclick = function () { more.textContent = el.classList.toggle("clamped") ? "Show all" : "Show less"; };
+      actions.appendChild(more);
+    }
+    if (intake.noteId) {
+      var edit = document.createElement("button");
+      edit.className = "inline-link"; edit.type = "button"; edit.textContent = "Edit intake notes"; edit.style.marginTop = "0";
+      edit.onclick = renderIntakeEdit;
+      actions.appendChild(edit);
+    }
+    if (msg) { $("intakeMsg").className = "msg " + msg[0]; $("intakeMsg").textContent = msg[1]; }
+  }
+
+  function renderIntakeEdit() {
+    var box = $("intake");
+    box.innerHTML = '<label class="lbl" for="intakeText">Intake notes</label>' +
+      '<textarea class="field" id="intakeText" style="min-height:180px"></textarea>' +
+      '<div class="lbl" style="margin-top:4px">Bold, bullets and other formatting are removed when you save.</div>' +
+      '<div class="actions"><button class="secondary" type="button" id="intakeSave">Save intake notes</button>' +
+      '<button class="inline-link" type="button" id="intakeCancel" style="margin-top:0">Cancel</button></div>' +
+      '<div class="msg" id="intakeMsg" role="status"></div>';
+    var ta = $("intakeText");
+    ta.value = intakeHtmlToText(intake.body);
+    ta.focus();
+    $("intakeCancel").onclick = function () { renderIntakeRead(); };
+    $("intakeSave").onclick = function () { saveIntake(ta.value); };
+  }
+
+  function saveIntake(text) {
+    var btn = $("intakeSave"), msg = $("intakeMsg");
+    var personId = intake.personId, noteId = intake.noteId, loadedBody = intake.body, token = current.token;
+    if (intakeHtmlToText(loadedBody) === text.trim()) { renderIntakeRead(); return; }
+    btn.disabled = true; btn.textContent = "Saving…";
+    readNote(personId).then(function (fresh) {
+      if ((fresh && fresh.body || "") !== loadedBody) throw { kind: "changed" };
+      var newBody = intakeTextToHtml(text.trim());
+      return loxoGraphQL(NOTE_UPDATE, { noteInput: { id: noteId, body: newBody, personId: personId } }).then(function (res) {
+        if (!(res && res.data && res.data.updateNote && res.data.updateNote.id)) throw { kind: "http", detail: "Unexpected response from Loxo" };
+        return newBody;
+      });
+    }).then(function (newBody) {
+      if (token !== current.token || intake.personId !== personId) return;
+      intake.body = newBody;
+      renderIntakeRead(["ok", "Intake notes saved."]);
+    }, function (err) {
+      if (token !== current.token) return;
+      btn.disabled = false; btn.textContent = "Save intake notes";
+      msg.className = "msg err";
+      if (err.kind === "changed") {
+        msg.innerHTML = "Not saved. Someone changed these notes in Loxo since you opened them. " +
+          '<button class="inline-link" type="button" id="intakeReload" style="margin-top:0">Copy your text, then reload</button>';
+        $("intakeReload").onclick = function () { loadIntake(personId, token); };
+      } else {
+        msg.textContent = "Not saved. " + (err.kind === "network" ? "Couldn't reach the Worker." :
+          err.status === 400 || err.status === 403 || err.status === 404 || err.status === 405 ? "The Worker is out of date. Paste the latest worker.js into Cloudflare." :
+          (typeof err.detail === "string" ? err.detail.slice(0, 140) : "Loxo returned an error."));
+      }
+    });
+  }
+
   function loadIntake(id, token) {
     var box = $("intake");
     box.innerHTML = '<span class="muted">Loading…</span>';
-    loxoGraphQL(INTAKE_QUERY, { id: id }).then(function (j) {
+    readNote(id).then(function (note) {
       if (token !== current.token) return;
-      var body = (j && j.data && j.data.person && j.data.person.note && j.data.person.note.body) || "";
       setCheck("Intake notes", "Working");
-      if (!body.replace(/<[^>]*>/g, "").trim()) { box.innerHTML = '<span class="muted">No intake notes yet.</span>'; return; }
-      box.innerHTML = '<div class="intake" id="intakeBody">' + sanitiseHtml(body) + "</div>";
-      var el = $("intakeBody");
-      if (el.scrollHeight > 200) {
-        el.classList.add("clamped");
-        var more = document.createElement("button");
-        more.className = "inline-link"; more.type = "button"; more.textContent = "Show all";
-        more.onclick = function () {
-          var c = el.classList.toggle("clamped");
-          more.textContent = c ? "Show all" : "Show less";
-        };
-        box.appendChild(more);
-      }
+      intake = { personId: id, noteId: note && note.id || null, body: note && note.body || "" };
+      renderIntakeRead();
     }, function (err) {
       if (token !== current.token) return;
       var why = err.kind === "network" ? "Couldn't reach the Worker." :
@@ -511,6 +720,35 @@
       setCheck("Intake notes", "Not available – " + (typeof err.detail === "string" ? err.detail.slice(0, 120) : (err.status || err.kind)));
       box.innerHTML = '<p class="muted" style="margin:0">' + esc(why) + " Open the record in Loxo to see them.</p>";
     });
+  }
+
+  // ---------- Log a call or note ----------
+  var drafts = {};   // person id -> unsaved text, kept while you click between emails
+  function setupLogForm(id, token) {
+    var form = $("logForm"), ta = $("logText"), btn = $("logSave"), msg = $("logMsg");
+    ta.value = drafts[id] || "";
+    msg.textContent = ""; msg.className = "msg";
+    btn.disabled = false; btn.textContent = "Save to Loxo";
+    ta.oninput = function () { drafts[id] = ta.value; };
+    form.onsubmit = function (e) {
+      e.preventDefault();
+      var text = ta.value.trim();
+      if (!text) { msg.className = "msg err"; msg.textContent = "Type a note first."; ta.focus(); return; }
+      var typeSel = $("logType"), typeId = parseInt(typeSel.value, 10), typeName = typeSel.options[typeSel.selectedIndex].text;
+      btn.disabled = true; btn.textContent = "Saving…";
+      loxoWrite("POST", "/people/" + id + "/activity", { activity_type_id: typeId, notes: text }).then(function () {
+        delete drafts[id];
+        if (token !== current.token) return;
+        ta.value = "";
+        btn.disabled = false; btn.textContent = "Save to Loxo";
+        msg.className = "msg ok"; msg.textContent = typeName + " saved to Loxo.";
+        setTimeout(function () { if (token === current.token) loadActivity(id, token); }, 1500);  // Loxo takes a moment to list new activity
+      }, function (err) {
+        if (token !== current.token) return;
+        btn.disabled = false; btn.textContent = "Save to Loxo";
+        msg.className = "msg err"; msg.textContent = "Not saved. " + err.message;
+      });
+    };
   }
 
   function cleanActivity(raw, typeId) {
@@ -570,9 +808,12 @@
       var p = res[0];
       showRaw(p);
       var s = personSummary(p);
-      $("loxo").innerHTML = recordHtml(s);
+      if (cache[current.email]) { cache[current.email].summary = s; renderThread(); }
+      showCard(s);
       setPrimary("Open in Loxo", function () { openRecord(s.id, s.name); });
+      current.personId = id;
       $("detail").hidden = false;
+      setupLogForm(id, token);
       renderJobs(p);
       renderTags(p);
       loadIntake(id, token);
@@ -600,7 +841,7 @@
     }[err.kind] || ["Something went wrong.", String(err && err.message || err.kind || err)];
     $("loxo").innerHTML = "<p>" + esc(msgs[0]) + "</p><p>" + esc(msgs[1]) + "</p>";
     var toSettings = err.kind === "auth" || err.kind === "network";
-    setPrimary(toSettings ? "Open settings" : "Try again", toSettings ? showSettings : function () { delete cache[current.email]; render(); });
+    setPrimary(toSettings ? "Open settings" : "Try again", toSettings ? showSettings : function () { delete cache[current.email]; showPerson({ email: current.email, displayName: $("name").textContent }, ""); });
   }
 
   function showRaw(json) {
@@ -618,23 +859,110 @@
     $("workerUrl").focus();
   }
 
+  // ---------- Everyone on the email ----------
+  var MAX_THREAD = 10;
+  var thread = { people: [], focus: "", token: null, failed: {} };
+
+  function threadPeople(item, me, ownDomain) {
+    var seen = {}, out = [];
+    function add(list, role) {
+      [].concat(list || []).forEach(function (a) {
+        if (!a || !a.emailAddress) return;
+        var e = a.emailAddress.toLowerCase().trim();
+        if (!e || seen[e] || e === me || domainOf(e) === ownDomain) return;
+        seen[e] = true;
+        out.push({ email: e, displayName: a.displayName || "", role: role });
+      });
+    }
+    add(item.from, "From"); add(item.to, "To"); add(item.cc, "Cc");
+    return out;
+  }
+
+  function threadStatus(p) {
+    var r = cache[p.email];
+    if (thread.failed[p.email]) return "Couldn't check";
+    if (!r) return isConfigured() ? "Checking…" : "";
+    if (r.status === "match") { var sm = r.summary || {}; var t = sm.type && sm.type !== "Loxo record" ? sm.type + " in Loxo" : "In Loxo"; return [t, sm.role].filter(Boolean).join(" – "); }
+    if (r.status === "possible") return "Not found under this email – similar names in Loxo";
+    return "Not in Loxo";
+  }
+
+  function renderThread() {
+    var people = thread.people;
+    $("threadSec").hidden = people.length < 2;
+    if (people.length < 2) return;
+    var shown = people.slice(0, MAX_THREAD);
+    $("thread").innerHTML = shown.map(function (p) {
+      var focused = p.email === thread.focus;
+      return '<li><button type="button" data-email="' + esc(p.email) + '"' + (focused ? ' aria-current="true"' : "") + ">" +
+        '<span class="t-top"><span class="t-name">' + esc(p.displayName || p.email) + '</span><span class="t-tag">' +
+        esc(focused ? "Showing" : p.role) + "</span></span>" +
+        "<small>" + esc(threadStatus(p)) + "</small></button></li>";
+    }).join("");
+    $("threadMore").hidden = people.length <= MAX_THREAD;
+    $("threadMore").textContent = "+" + (people.length - MAX_THREAD) + " more on this email, not checked.";
+    $("thread").querySelectorAll("button[data-email]").forEach(function (b) {
+      b.onclick = function () {
+        var p = people.find(function (x) { return x.email === b.getAttribute("data-email"); });
+        if (!p || p.email === thread.focus) return;
+        showPerson(p, "");
+        window.scrollTo(0, 0);
+      };
+    });
+  }
+
+  function lookupThread(tok) {
+    if (!isConfigured()) return;
+    var queue = thread.people.slice(0, MAX_THREAD).filter(function (p) { return !cache[p.email]; });
+    (function next() {
+      if (tok !== thread.token || !queue.length) return;
+      var p = queue.shift();
+      lookupInLoxo(p.email).then(function () {}, function () { thread.failed[p.email] = true; })
+        .then(function () {
+          if (tok !== thread.token) return;
+          renderThread();
+          setTimeout(next, 250);   // spaced out to stay within Loxo's rate limit
+        });
+    })();
+  }
+
+  // ---------- Main render ----------
   function render() {
     var mailbox = Office.context.mailbox, item = mailbox.item;
-    var token = current.token = {};
     $("settings").hidden = true;
-    $("detail").hidden = true; $("jobsSec").hidden = true; $("tagsSec").hidden = true;
     if (!item || item.itemType !== Office.MailboxEnums.ItemType.Message || !item.from) {
+      current.token = {}; thread.token = {};
       showEmpty("No email selected", "Select an email to see who sent it.");
       return;
     }
     var me = (mailbox.userProfile.emailAddress || "").toLowerCase();
-    var person = item.from, note = "";
-    if ((person.emailAddress || "").toLowerCase() === me && item.to && item.to.length) {
-      person = item.to[0];
-      note = item.to.length > 1 ? "You sent this. Showing the first of " + item.to.length + " recipients." : "You sent this. Showing the recipient.";
+    var ownDomain = domainOf(me);
+    var sentByMe = (item.from.emailAddress || "").toLowerCase() === me;
+
+    thread.people = threadPeople(item, me, ownDomain);
+    thread.token = {};
+    thread.failed = {};
+
+    var focus = item.from, note = "";
+    if (sentByMe) {
+      var firstExternal = thread.people[0];
+      focus = firstExternal ? { emailAddress: firstExternal.email, displayName: firstExternal.displayName } : (item.to && item.to[0]) || item.from;
+      note = "You sent this.";
     }
-    current.email = (person.emailAddress || "").toLowerCase().trim();
+    showPerson({ email: (focus.emailAddress || "").toLowerCase().trim(), displayName: focus.displayName || "" }, note);
+
+    var tok = thread.token;
+    setTimeout(function () { lookupThread(tok); }, 600);  // let the main record load first
+  }
+
+  function showPerson(person, note) {
+    var me = (Office.context.mailbox.userProfile.emailAddress || "").toLowerCase();
+    var token = current.token = {};
+    $("detail").hidden = true; $("jobsSec").hidden = true; $("tagsSec").hidden = true;
+
+    current.email = person.email;
     current.name = person.displayName && person.displayName.indexOf("@") === -1 ? person.displayName : "";
+    thread.focus = current.email;
     var kind = classify(current.email, domainOf(me));
     current.kind = kind.type;
 
@@ -645,6 +973,7 @@
     $("kind").innerHTML = ICONS[kind.type] + "<span></span>";
     $("kind").lastChild.textContent = kind.label;
     $("copyBtn").textContent = "Copy email address";
+    renderThread();
 
     if (kind.type === "internal") { $("loxo").innerHTML = "<p>Internal emails are skipped.</p>"; setPrimary(null); return; }
     if (!isConfigured()) {
@@ -654,6 +983,7 @@
     $("loxo").innerHTML = "<p>Checking Loxo…</p>"; setPrimary(null);
     lookupInLoxo(current.email).then(function (res) {
       if (token !== current.token) return;
+      renderThread();
       if (res.status === "match") renderMatch(res.id, token);
       else if (res.status === "possible") renderPossible(res);
       else {
