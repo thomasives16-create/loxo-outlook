@@ -58,9 +58,40 @@
     .rec-type { font-size: 12px; font-weight: 600; color: var(--ok); margin-bottom: 4px; }
     .rec-name { font-size: 16px; font-weight: 700; color: var(--charcoal); }
     .rec-role { margin-top: 2px; }
+    .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .pill { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); }
+    .pill.status { font-weight: 600; border-color: var(--navy); }
     dl.facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 10px 0 0; font-size: 12px; }
     dl.facts dt { color: var(--grey); }
     dl.facts dd { margin: 0; overflow-wrap: anywhere; }
+
+    .section { font-size: 13px; }
+    .section .muted, .muted { color: var(--grey); }
+    .intake { background: var(--wash); border-radius: 6px; padding: 10px 12px; font-size: 13px; overflow-wrap: anywhere; }
+    .intake.clamped { max-height: 180px; overflow: hidden; position: relative; }
+    .intake.clamped::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 40px;
+                             background: linear-gradient(to bottom, transparent, var(--wash)); }
+    .intake p { margin: 0; }
+    .intake ul, .intake ol { margin: 4px 0; padding-left: 18px; }
+
+    .acts { list-style: none; margin: 0; padding: 0; }
+    .acts li { padding: 8px 0; border-top: 1px solid var(--line); }
+    .acts li:first-child { border-top: 0; padding-top: 0; }
+    .act-head { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+    .act-type { font-weight: 600; color: var(--navy); }
+    .act-meta { color: var(--grey); text-align: right; }
+    .act-body { margin-top: 3px; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .act-body.clamped { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+    .jobs { list-style: none; margin: 0; padding: 0; }
+    .jobs li + li { margin-top: 6px; }
+    .jobs button { all: unset; box-sizing: border-box; cursor: pointer; display: block; width: 100%; padding: 7px 10px;
+                   border: 1px solid var(--line); border-radius: 6px; font-size: 13px; }
+    .jobs button:hover { border-color: var(--navy); }
+
+    dl.tags { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; font-size: 12px; }
+    dl.tags dt { color: var(--grey); }
+    dl.tags dd { margin: 0; overflow-wrap: anywhere; }
 
     .possible { list-style: none; margin: 8px 0 0; padding: 0; }
     .possible li + li { margin-top: 6px; }
@@ -74,6 +105,7 @@
     .primary:hover { filter: brightness(1.12); }
     .link { all: unset; box-sizing: border-box; cursor: pointer; display: block; width: 100%; margin-top: 10px; text-align: center;
             font-size: 13px; color: var(--navy); text-decoration: underline; text-underline-offset: 2px; }
+    .inline-link { all: unset; cursor: pointer; font-size: 12px; color: var(--navy); text-decoration: underline; text-underline-offset: 2px; margin-top: 8px; display: inline-block; }
     .icon-btn { all: unset; cursor: pointer; font-size: 12px; color: var(--grey); text-decoration: underline; text-underline-offset: 2px; }
     button:focus-visible, summary:focus-visible, input:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
 
@@ -82,10 +114,10 @@
                           background: var(--bg); color: var(--charcoal); font: 13px var(--font); }
     form.settings .hint { font-size: 12px; color: var(--grey); margin-top: 4px; }
 
-    details { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 10px; font-size: 12px; color: var(--grey); }
+    details.checks { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 10px; font-size: 12px; color: var(--grey); }
     summary { cursor: pointer; }
-    details dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 10px 0 0; }
-    details dd { margin: 0; color: var(--charcoal); overflow-wrap: anywhere; }
+    details.checks dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 10px 0 0; }
+    details.checks dd { margin: 0; color: var(--charcoal); overflow-wrap: anywhere; }
     pre { white-space: pre-wrap; word-break: break-all; font-size: 11px; max-height: 260px; overflow: auto;
           background: var(--wash); color: var(--charcoal); padding: 8px; border-radius: 6px; }
 
@@ -124,6 +156,26 @@
 
     <button class="primary" id="primaryBtn" type="button" hidden></button>
     <button class="link" id="copyBtn" type="button">Copy email address</button>
+
+    <!-- Filled in once a record is matched -->
+    <div id="detail" hidden>
+      <section class="section">
+        <h2>Intake notes</h2>
+        <div id="intake"><span class="muted">Loading…</span></div>
+      </section>
+      <section class="section">
+        <h2>Recent activity</h2>
+        <div id="activity"><span class="muted">Loading…</span></div>
+      </section>
+      <section class="section" id="jobsSec" hidden>
+        <h2>Jobs</h2>
+        <div id="jobs"></div>
+      </section>
+      <section class="section" id="tagsSec" hidden>
+        <h2>Tags</h2>
+        <div id="tags"></div>
+      </section>
+    </div>
   </main>
 
   <section class="empty" id="empty" hidden>
@@ -131,7 +183,7 @@
     <p id="emptyText"></p>
   </section>
 
-  <details id="checks">
+  <details class="checks" id="checks">
     <summary>Install check</summary>
     <dl id="checkList"></dl>
     <div id="rawWrap" hidden>
@@ -142,9 +194,34 @@
 
 <script>
   // ---------- Config ----------
-  // Web link for a record in Loxo. If "Open in Loxo" lands on the wrong page, this is the line to change.
+  var PANEL_VERSION = "1.3 (full record view)";
   var LOXO_WEB = "https://pod2.app.loxo.co/agencies/40202";
-  var PANEL_VERSION = "1.2 (Loxo links fixed)";
+
+  // From TomTom: Hedgerway's Loxo tag fields
+  var TAG_FIELDS = [
+    ["custom_hierarchy_15", "Level"],
+    ["custom_hierarchy_5",  "Qualification"],
+    ["custom_date_range_4", "Qualified", "date"],
+    ["custom_hierarchy_2",  "Industry"],
+    ["custom_hierarchy_4",  "Skills"],
+    ["custom_hierarchy_8",  "Technology"],
+    ["custom_hierarchy_6",  "Location"],
+    ["custom_hierarchy_11", "Notice period"],
+    ["custom_hierarchy_3",  "Permanent", "bool"],
+    ["custom_hierarchy_10", "Contract", "bool"]
+  ];
+  var STATUS_FIELD = "custom_hierarchy_25";
+
+  // From TomTom: Loxo activity types
+  var ACTIVITY_TYPES = {
+    116381: "Note", 116391: "Phone call", 116392: "Incoming call", 116393: "Email", 116394: "InMail",
+    116388: "SMS", 116390: "SMS received", 116387: "Email received", 116383: "Interview note",
+    116401: "Interview", 116402: "Client interview", 116416: "Meeting", 116389: "Voicemail",
+    116399: "Submitted", 116423: "Pitched", 116407: "Offer", 116408: "Hired"
+  };
+  var EMAIL_TYPES = [116393, 116387, 116394];
+
+  var INTAKE_QUERY = "query person($id: Int!) { person(id: $id) { note { id: _id body } } }";
 
   var PERSONAL_DOMAINS = [
     "gmail.com","googlemail.com","hotmail.com","hotmail.co.uk","outlook.com","live.com","live.co.uk",
@@ -159,7 +236,9 @@
 
   var $ = function (id) { return document.getElementById(id); };
   var current = { email: "", name: "", kind: "" };
-  var cache = {};          // email -> lookup result, for this session
+  var cache = {};           // email -> lookup result
+  var recordCache = {};     // person id -> full record
+  var users = null;         // user id -> name
   var primaryAction = null;
 
   // ---------- Settings storage (this computer only) ----------
@@ -188,8 +267,9 @@
     }
     return "";
   }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
-  // ---------- Reading a Loxo person defensively (field names unconfirmed) ----------
+  // ---------- Reading a Loxo person ----------
   function personEmails(p) {
     var out = [];
     (p.emails || p.email_addresses || []).forEach(function (e) {
@@ -206,19 +286,26 @@
     if (/candidate/.test(names)) return "Candidate";
     return "Loxo record";
   }
+  function fieldValues(p, field) {
+    var v = p[field];
+    if (v == null || v === "") return [];
+    return [].concat(v).map(function (x) { return x && typeof x === "object" ? (x.value || x.name || "") : x; })
+      .filter(function (x) { return x !== "" && x != null; }).map(String);
+  }
   function personSummary(p) {
-    var company = pick(p, ["current_company", "company.name", "company_name", "current_company_name"]);
+    var company = pick(p, ["current_company", "company.name", "company_name"]);
     var title = pick(p, ["current_title", "title", "job_title"]);
+    var ownerId = p.owned_by_id;
     return {
       id: p.id,
       name: pick(p, ["name"]) || [p.first_name, p.last_name].filter(Boolean).join(" "),
-      title: title, company: company,
       role: title && company ? title + " at " + company : (title || company),
       type: personType(p),
+      status: fieldValues(p, STATUS_FIELD)[0] || "",
+      owner: ownerId && users && users[ownerId] ? users[ownerId] : pick(p, ["owned_by.name", "owner.name"]),
       location: pick(p, ["location", "city"]),
-      status: pick(p, ["person_global_status.name", "candidate_status.name", "status.name", "status"]),
-      owner: pick(p, ["owned_by.name", "owner.name", "created_by.name"]),
-      updated: fmtDate(pick(p, ["updated_at", "last_activity_at"])),
+      updated: fmtDate(pick(p, ["updated_at"])),
+      salary: p.salary ? "£" + Math.round(parseFloat(p.salary)).toLocaleString("en-GB") + (p.bonus != null && p.bonus !== "" ? " + " + parseFloat(p.bonus) + "% bonus" : "") : "",
       emails: personEmails(p)
     };
   }
@@ -228,21 +315,56 @@
   }
 
   // ---------- Loxo via the Worker ----------
-  function loxoGet(path) {
-    var base = getSetting("workerUrl").replace(/\/+$/, "");
-    return fetch(base + path, { headers: { Authorization: "Bearer " + getSetting("apiKey") } })
+  function workerBase() { return getSetting("workerUrl").replace(/\/+$/, ""); }
+  function authHeader() { return "Bearer " + getSetting("apiKey"); }
+
+  function loxoGet(path, attempt) {
+    attempt = attempt || 0;
+    return fetch(workerBase() + path, { headers: { Authorization: authHeader() } })
       .then(function (r) {
+        if (r.status === 429 && attempt < 3) return sleep(1200 * (attempt + 1)).then(function () { return loxoGet(path, attempt + 1); });
         if (r.status === 401) throw { kind: "auth" };
         if (r.status === 403) throw { kind: "origin" };
+        if (r.status === 404 && attempt === 0 && !/^\/people/.test(path)) throw { kind: "worker-old" };
         if (!r.ok) throw { kind: "http", status: r.status };
         return r.json();
       }, function () { throw { kind: "network" }; });
   }
 
+  function loxoGraphQL(query, variables) {
+    return fetch(workerBase() + "/graphql", {
+      method: "POST",
+      headers: { Authorization: authHeader(), "Content-Type": "application/json" },
+      body: JSON.stringify({ query: query, variables: JSON.stringify(variables) })
+    }).then(function (r) {
+      return r.text().then(function (t) {
+        var j = null; try { j = JSON.parse(t); } catch (e) {}
+        if (!r.ok) throw { kind: "gql", status: r.status, detail: j || t };
+        if (j && j.errors && j.errors.length) throw { kind: "gql", status: r.status, detail: j.errors.map(function (e) { return e.message; }).join(", ") };
+        return j;
+      });
+    }, function () { throw { kind: "network" }; });
+  }
+
+  function loadUsers() {
+    if (users) return Promise.resolve(users);
+    try {
+      var cached = JSON.parse(localStorage.getItem("loxoLookup.users") || "null");
+      if (cached && Date.now() - cached.ts < 24 * 3600 * 1000) { users = cached.map; return Promise.resolve(users); }
+    } catch (e) {}
+    return loxoGet("/users").then(function (json) {
+      var list = Array.isArray(json) ? json : (json.users || []);
+      users = {};
+      list.forEach(function (u) { users[u.id] = u.name || u.full_name || [u.first_name, u.last_name].filter(Boolean).join(" ") || ("User " + u.id); });
+      try { localStorage.setItem("loxoLookup.users", JSON.stringify({ ts: Date.now(), map: users })); } catch (e) {}
+      return users;
+    }, function () { users = users || {}; return users; });
+  }
+
   function lookupInLoxo(email) {
     if (cache[email]) return Promise.resolve(cache[email]);
     var target = email.toLowerCase();
-    var queries = ['"' + email + '"', email];     // tried in order until an exact email match
+    var queries = ['"' + email + '"', email];
     var lastPeople = [];
 
     function attempt(i) {
@@ -255,32 +377,32 @@
         if (!people.length) return attempt(i + 1);
         lastPeople = people;
         var hit = people.find(function (p) { return personEmails(p).indexOf(target) !== -1; });
-        if (hit) return { status: "match", person: personSummary(hit) };
-        // Search results may not include emails – check the full records of the top few
+        if (hit) return { status: "match", id: hit.id };
         var top = people.filter(function (p) { return !personEmails(p).length; }).slice(0, 5);
         if (!top.length) return attempt(i + 1);
-        return Promise.all(top.map(function (p) {
-          return loxoGet("/people/" + p.id).then(function (j) { return j.person || j; }, function () { return null; });
-        })).then(function (full) {
-          var exact = full.filter(Boolean).find(function (p) { return personEmails(p).indexOf(target) !== -1; });
-          if (exact) { showRaw(exact); return { status: "match", person: personSummary(exact) }; }
-          return attempt(i + 1);
-        });
+        return Promise.all(top.map(function (p) { return getRecord(p.id).catch(function () { return null; }); }))
+          .then(function (full) {
+            var exact = full.filter(Boolean).find(function (p) { return personEmails(p).indexOf(target) !== -1; });
+            return exact ? { status: "match", id: exact.id } : attempt(i + 1);
+          });
       });
     }
     return attempt(0).then(function (res) { cache[email] = res; return res; });
   }
 
-  // ---------- Rendering ----------
+  function getRecord(id) {
+    if (recordCache[id]) return Promise.resolve(recordCache[id]);
+    return loxoGet("/people/" + id).then(function (j) { var p = j.person || j; recordCache[id] = p; return p; });
+  }
+
+  // ---------- Rendering: header card ----------
   function setPrimary(label, fn) {
     var b = $("primaryBtn");
     if (!label) { b.hidden = true; primaryAction = null; return; }
     b.hidden = false; b.textContent = label; primaryAction = fn;
   }
   function openUrl(url) {
-    try {
-      if (Office.context.ui && Office.context.ui.openBrowserWindow) { Office.context.ui.openBrowserWindow(url); return; }
-    } catch (e) {}
+    try { if (Office.context.ui && Office.context.ui.openBrowserWindow) { Office.context.ui.openBrowserWindow(url); return; } } catch (e) {}
     window.open(url, "_blank", "noopener");
   }
   function openRecord(id, name) {
@@ -290,54 +412,188 @@
   function searchLoxo() { openUrl(LOXO_WEB + "/people?query=" + encodeURIComponent(current.name || current.email)); }
 
   function recordHtml(s) {
-    var facts = [["Status", s.status], ["Location", s.location], ["Owner", s.owner], ["Updated", s.updated],
-                 ["Emails", s.emails.join(", ")]].filter(function (f) { return f[1]; });
-    return '<div class="rec-type">' + esc(s.type) + ' in Loxo</div>' +
-      '<div class="rec-name">' + esc(s.name) + '</div>' +
-      (s.role ? '<div class="rec-role">' + esc(s.role) + '</div>' : "") +
+    var pills = [];
+    if (s.status) pills.push('<span class="pill status">' + esc(s.status) + "</span>");
+    if (s.owner) pills.push('<span class="pill">Owner: ' + esc(s.owner) + "</span>");
+    var facts = [["Location", s.location], ["Salary", s.salary], ["Updated", s.updated], ["Emails", s.emails.join(", ")]]
+      .filter(function (f) { return f[1]; });
+    return '<div class="rec-type">' + esc(s.type) + " in Loxo</div>" +
+      '<div class="rec-name">' + esc(s.name) + "</div>" +
+      (s.role ? '<div class="rec-role">' + esc(s.role) + "</div>" : "") +
+      (pills.length ? '<div class="pills">' + pills.join("") + "</div>" : "") +
       (facts.length ? '<dl class="facts">' + facts.map(function (f) { return "<dt>" + esc(f[0]) + "</dt><dd>" + esc(f[1]) + "</dd>"; }).join("") + "</dl>" : "");
   }
 
-  function renderLoxo(res) {
-    var box = $("loxo");
-    if (res.status === "match") {
-      box.innerHTML = recordHtml(res.person);
-      setPrimary("Open in Loxo", function () { openRecord(res.person.id, res.person.name); });
-    } else if (res.status === "possible") {
-      box.innerHTML = "<p>No record has this exact email address.</p><p>Similar records:</p>" +
-        '<ul class="possible">' + res.people.map(function (s) {
-          return '<li><button type="button" data-id="' + esc(s.id) + '" data-name="' + esc(s.name) + '">' + esc(s.name) + "<small>" + esc(s.role || s.type) + "</small></button></li>";
-        }).join("") + "</ul>";
-      box.querySelectorAll("button[data-id]").forEach(function (b) { b.onclick = function () { openRecord(b.getAttribute("data-id"), b.getAttribute("data-name")); }; });
-      setPrimary("Search Loxo for " + (current.name || "this person"), searchLoxo);
-    } else if (res.status === "none") {
-      box.innerHTML = "<p>Not in Loxo under this email address.</p><p>They may be saved with a different address.</p>";
-      setPrimary("Search Loxo for " + (current.name || "this person"), searchLoxo);
+  // ---------- Rendering: detail sections ----------
+  function renderJobs(p) {
+    var jobs = (p.candidate_jobs || []).slice().sort(function (a, b) { return (b.id || 0) - (a.id || 0); });
+    $("jobsSec").hidden = false;
+    if (!jobs.length) { $("jobs").innerHTML = '<span class="muted">Not in any jobs.</span>'; return; }
+    $("jobs").innerHTML = '<ul class="jobs">' + jobs.slice(0, 8).map(function (j) {
+      return '<li><button type="button" data-job="' + esc(j.id) + '">' + esc(j.title || j.name || "Untitled job") + "</button></li>";
+    }).join("") + "</ul>" + (jobs.length > 8 ? '<div class="muted" style="margin-top:6px">+' + (jobs.length - 8) + " more</div>" : "");
+    $("jobs").querySelectorAll("button[data-job]").forEach(function (b) {
+      b.onclick = function () { openUrl(LOXO_WEB + "/jobs/" + b.getAttribute("data-job")); };
+    });
+  }
+
+  function renderTags(p) {
+    var rows = [];
+    TAG_FIELDS.forEach(function (f) {
+      var vals = fieldValues(p, f[0]);
+      if (!vals.length) return;
+      var shown;
+      if (f[2] === "date") { var d = new Date(vals[0]); shown = isNaN(d) ? vals[0] : String(d.getFullYear()); }
+      else if (f[2] === "bool") { var v = vals[0].toLowerCase(); if (v !== "true" && v !== "yes") return; shown = "Yes"; }
+      else shown = vals.join(", ");
+      rows.push("<dt>" + esc(f[1]) + "</dt><dd>" + esc(shown) + "</dd>");
+    });
+    $("tagsSec").hidden = !rows.length;
+    $("tags").innerHTML = '<dl class="tags">' + rows.join("") + "</dl>";
+  }
+
+  // Sanitise Loxo's rich-text note (based on TomTom's sanitiser; drops colours/fonts so it reads in dark mode)
+  function sanitiseHtml(html) {
+    var ALLOWED = ["P","BR","B","STRONG","I","EM","U","S","UL","OL","LI","SPAN","DIV","H1","H2","H3","H4","BLOCKQUOTE"];
+    var doc = new DOMParser().parseFromString(html || "", "text/html");
+    (function walk(node) {
+      Array.prototype.slice.call(node.childNodes).forEach(function (c) {
+        if (c.nodeType === 1) {
+          if (ALLOWED.indexOf(c.tagName) === -1) { c.replaceWith(document.createTextNode(c.textContent || "")); return; }
+          Array.prototype.slice.call(c.attributes).forEach(function (a) { c.removeAttribute(a.name); });
+          walk(c);
+        } else if (c.nodeType === 8) { c.remove(); }
+      });
+    })(doc.body);
+    return doc.body.innerHTML;
+  }
+
+  function loadIntake(id, token) {
+    var box = $("intake");
+    box.innerHTML = '<span class="muted">Loading…</span>';
+    loxoGraphQL(INTAKE_QUERY, { id: id }).then(function (j) {
+      if (token !== current.token) return;
+      var body = (j && j.data && j.data.person && j.data.person.note && j.data.person.note.body) || "";
+      setCheck("Intake notes", "Working");
+      if (!body.replace(/<[^>]*>/g, "").trim()) { box.innerHTML = '<span class="muted">No intake notes yet.</span>'; return; }
+      box.innerHTML = '<div class="intake" id="intakeBody">' + sanitiseHtml(body) + "</div>";
+      var el = $("intakeBody");
+      if (el.scrollHeight > 200) {
+        el.classList.add("clamped");
+        var more = document.createElement("button");
+        more.className = "inline-link"; more.type = "button"; more.textContent = "Show all";
+        more.onclick = function () {
+          var c = el.classList.toggle("clamped");
+          more.textContent = c ? "Show all" : "Show less";
+        };
+        box.appendChild(more);
+      }
+    }, function (err) {
+      if (token !== current.token) return;
+      var why = err.kind === "network" ? "Couldn't reach the Worker." :
+                err.status === 404 || err.status === 405 ? "The Worker needs updating to version 2." :
+                "Loxo didn't accept the API key for intake notes.";
+      setCheck("Intake notes", "Not available – " + (typeof err.detail === "string" ? err.detail.slice(0, 120) : (err.status || err.kind)));
+      box.innerHTML = '<p class="muted" style="margin:0">' + esc(why) + " Open the record in Loxo to see them.</p>";
+    });
+  }
+
+  function cleanActivity(raw, typeId) {
+    var text = raw || "";
+    if (/<[a-z][\s\S]*>/i.test(text)) {
+      var tmp = document.createElement("div");
+      tmp.innerHTML = text.replace(/<(br|\/p|\/div|\/li)[^>]*>/gi, "\n$&");
+      text = tmp.textContent || "";
     }
+    var isEmail = EMAIL_TYPES.indexOf(typeId) !== -1;
+    var skip = [/^From:/i, /^Sent:/i, /^To:/i, /^Cc:/i, /^Subject:/i, /^>/, /^\s*[_=-]{3,}/, /^Kind Regards/i, /^Best Regards/i,
+                /^Thanks$/i, /^Cheers$/i, /^Best$/i, /^Mobile:/i, /^Email:/i, /hedgerway\.com/i, /information contained in this/i, /confidential/i];
+    var out = [];
+    text.replace(/\r\n?/g, "\n").split("\n").forEach(function (l) {
+      var t = l.trim();
+      if (!t) return;
+      if (isEmail && skip.some(function (re) { return re.test(t); })) return;
+      if (!isEmail) t = t.replace(/^>+\s*/, "");
+      if (t) out.push(t);
+    });
+    return out.join("\n").slice(0, 1500);
+  }
+
+  function loadActivity(id, token) {
+    var box = $("activity");
+    box.innerHTML = '<span class="muted">Loading…</span>';
+    loxoGet("/person_events?person_id=" + encodeURIComponent(id) + "&per_page=30").then(function (json) {
+      if (token !== current.token) return;
+      var events = (json.person_events || json.events || (Array.isArray(json) ? json : []))
+        .filter(function (e) { return e.notes && String(e.notes).trim(); })
+        .sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); })
+        .slice(0, 5);
+      if (!events.length) { box.innerHTML = '<span class="muted">No activity recorded yet.</span>'; return; }
+      box.innerHTML = '<ul class="acts">' + events.map(function (e, i) {
+        var who = users && users[e.created_by_id] ? users[e.created_by_id] : "";
+        var body = cleanActivity(e.notes, e.activity_type_id) || "(no text)";
+        return '<li><div class="act-head"><span class="act-type">' + esc(ACTIVITY_TYPES[e.activity_type_id] || "Activity") + "</span>" +
+          '<span class="act-meta">' + esc([who, fmtDate(e.created_at)].filter(Boolean).join(", ")) + "</span></div>" +
+          '<div class="act-body clamped" data-i="' + i + '" title="Click to expand">' + esc(body) + "</div></li>";
+      }).join("") + "</ul>";
+      box.querySelectorAll(".act-body").forEach(function (el) {
+        el.style.cursor = "pointer";
+        el.onclick = function () { el.classList.toggle("clamped"); };
+      });
+    }, function (err) {
+      if (token !== current.token) return;
+      box.innerHTML = '<p class="muted" style="margin:0">' +
+        esc(err.kind === "worker-old" ? "The Worker needs updating to version 2 to show activity." : "Couldn't load activity.") + "</p>";
+    });
+  }
+
+  // ---------- Main render ----------
+  function renderMatch(id, token) {
+    $("loxo").innerHTML = "<p>Found in Loxo. Loading the record…</p>";
+    Promise.all([getRecord(id), loadUsers()]).then(function (res) {
+      if (token !== current.token) return;
+      var p = res[0];
+      showRaw(p);
+      var s = personSummary(p);
+      $("loxo").innerHTML = recordHtml(s);
+      setPrimary("Open in Loxo", function () { openRecord(s.id, s.name); });
+      $("detail").hidden = false;
+      renderJobs(p);
+      renderTags(p);
+      loadIntake(id, token);
+      loadActivity(id, token);
+    }, function (err) { if (token === current.token) renderError(err); });
+  }
+
+  function renderPossible(res) {
+    var box = $("loxo");
+    box.innerHTML = "<p>No record has this exact email address.</p><p>Similar records:</p>" +
+      '<ul class="possible">' + res.people.map(function (s) {
+        return '<li><button type="button" data-id="' + esc(s.id) + '" data-name="' + esc(s.name) + '">' + esc(s.name) + "<small>" + esc(s.role || s.type) + "</small></button></li>";
+      }).join("") + "</ul>";
+    box.querySelectorAll("button[data-id]").forEach(function (b) { b.onclick = function () { openRecord(b.getAttribute("data-id"), b.getAttribute("data-name")); }; });
+    setPrimary("Search Loxo for " + (current.name || "this person"), searchLoxo);
   }
 
   function renderError(err) {
-    var box = $("loxo");
     var msgs = {
       auth: ["Loxo rejected the API key.", "Check the key in Settings."],
       origin: ["The Worker refused this request.", "Its allowed address doesn't match where the panel is hosted."],
       network: ["Can't reach the Worker.", "Check the Worker address in Settings, and your internet connection."],
       http: ["Loxo returned an error" + (err.status ? " (" + err.status + ")" : "") + ".", "Try again in a moment. If it keeps happening, send a screenshot of Install check."]
-    }[err.kind] || ["Something went wrong.", String(err && err.message || err)];
-    box.innerHTML = "<p>" + esc(msgs[0]) + "</p><p>" + esc(msgs[1]) + "</p>";
-    setPrimary(err.kind === "auth" || err.kind === "network" ? "Open settings" : "Try again",
-      err.kind === "auth" || err.kind === "network" ? showSettings : function () { delete cache[current.email]; render(); });
+    }[err.kind] || ["Something went wrong.", String(err && err.message || err.kind || err)];
+    $("loxo").innerHTML = "<p>" + esc(msgs[0]) + "</p><p>" + esc(msgs[1]) + "</p>";
+    var toSettings = err.kind === "auth" || err.kind === "network";
+    setPrimary(toSettings ? "Open settings" : "Try again", toSettings ? showSettings : function () { delete cache[current.email]; render(); });
   }
 
   function showRaw(json) {
-    try { $("raw").textContent = JSON.stringify(json, null, 2).slice(0, 6000); $("rawWrap").hidden = false; } catch (e) {}
+    try { $("raw").textContent = JSON.stringify(json, null, 2).slice(0, 8000); $("rawWrap").hidden = false; } catch (e) {}
   }
-
   function showEmpty(title, text) {
     $("view").hidden = true; $("settings").hidden = true; $("empty").hidden = false;
     $("emptyTitle").textContent = title; $("emptyText").textContent = text;
   }
-
   function showSettings() {
     $("view").hidden = true; $("empty").hidden = true; $("settings").hidden = false;
     $("workerUrl").value = getSetting("workerUrl");
@@ -348,7 +604,9 @@
 
   function render() {
     var mailbox = Office.context.mailbox, item = mailbox.item;
+    var token = current.token = {};
     $("settings").hidden = true;
+    $("detail").hidden = true; $("jobsSec").hidden = true; $("tagsSec").hidden = true;
     if (!item || item.itemType !== Office.MailboxEnums.ItemType.Message || !item.from) {
       showEmpty("No email selected", "Select an email to see who sent it.");
       return;
@@ -372,20 +630,21 @@
     $("kind").lastChild.textContent = kind.label;
     $("copyBtn").textContent = "Copy email address";
 
-    if (kind.type === "internal") {
-      $("loxo").innerHTML = "<p>Internal emails are skipped.</p>"; setPrimary(null); return;
-    }
+    if (kind.type === "internal") { $("loxo").innerHTML = "<p>Internal emails are skipped.</p>"; setPrimary(null); return; }
     if (!isConfigured()) {
       $("loxo").innerHTML = "<p>Not connected to Loxo yet.</p><p>Add the Worker address and your API key to start matching.</p>";
       setPrimary("Connect to Loxo", showSettings); return;
     }
     $("loxo").innerHTML = "<p>Checking Loxo…</p>"; setPrimary(null);
-    var requested = current.email;
-    lookupInLoxo(requested).then(function (res) {
-      if (requested === current.email) renderLoxo(res);       // ignore replies for an email you've moved past
-    }, function (err) {
-      if (requested === current.email) renderError(err);
-    });
+    lookupInLoxo(current.email).then(function (res) {
+      if (token !== current.token) return;
+      if (res.status === "match") renderMatch(res.id, token);
+      else if (res.status === "possible") renderPossible(res);
+      else {
+        $("loxo").innerHTML = "<p>Not in Loxo under this email address.</p><p>They may be saved with a different address.</p>";
+        setPrimary("Search Loxo for " + (current.name || "this person"), searchLoxo);
+      }
+    }, function (err) { if (token === current.token) renderError(err); });
   }
 
   function copyEmail() {
@@ -401,10 +660,15 @@
     else fallback();
   }
 
-  function addCheck(label, value) {
-    var dt = document.createElement("dt"); dt.textContent = label;
-    var dd = document.createElement("dd"); dd.textContent = value;
-    $("checkList").appendChild(dt); $("checkList").appendChild(dd);
+  var checkEls = {};
+  function setCheck(label, value) {
+    if (!checkEls[label]) {
+      var dt = document.createElement("dt"); dt.textContent = label;
+      var dd = document.createElement("dd");
+      $("checkList").appendChild(dt); $("checkList").appendChild(dd);
+      checkEls[label] = dd;
+    }
+    checkEls[label].textContent = value;
   }
 
   // ---------- Wiring ----------
@@ -416,7 +680,8 @@
     if (!/^https:\/\//.test(url)) { $("workerUrl").setCustomValidity("Use the full https:// address of the Worker"); $("workerUrl").reportValidity(); return; }
     $("workerUrl").setCustomValidity("");
     setSetting("workerUrl", url); setSetting("apiKey", key.replace(/^Bearer\s+/i, ""));
-    cache = {};
+    cache = {}; recordCache = {}; users = null;
+    try { localStorage.removeItem("loxoLookup.users"); } catch (e2) {}
     if (window.Office && Office.context && Office.context.mailbox) render();
   });
   $("workerUrl").addEventListener("input", function () { this.setCustomValidity(""); });
@@ -425,23 +690,24 @@
 
   var officeTimer = setTimeout(function () {
     showEmpty("Hosting works", "This page loaded correctly. Open it from the Loxo Lookup button in Outlook to see sender details.");
-    addCheck("Running in Outlook", "No – opened in a browser");
+    setCheck("Running in Outlook", "No – opened in a browser");
+    setCheck("Panel version", PANEL_VERSION);
   }, 6000);
 
   if (typeof Office !== "undefined") {
     Office.onReady(function (info) {
       if (info.host !== Office.HostType.Outlook) return;
       clearTimeout(officeTimer);
-      $("checkList").innerHTML = "";
+      $("checkList").innerHTML = ""; checkEls = {};
       var canPin = Office.context.requirements.isSetSupported("Mailbox", "1.5");
-      addCheck("Running in Outlook", "Yes");
-      addCheck("Panel version", PANEL_VERSION);
-      addCheck("Pinning supported", canPin ? "Yes" : "No – pane will close between emails");
-      addCheck("Loxo settings", isConfigured() ? "Saved" : "Not set");
+      setCheck("Running in Outlook", "Yes");
+      setCheck("Panel version", PANEL_VERSION);
+      setCheck("Pinning supported", canPin ? "Yes" : "No – pane will close between emails");
+      setCheck("Loxo settings", isConfigured() ? "Saved" : "Not set");
       render();
       if (canPin) {
         Office.context.mailbox.addHandlerAsync(Office.EventType.ItemChanged, render, function (r) {
-          addCheck("Follows selected email", r.status === Office.AsyncResultStatus.Succeeded ? "Yes" : "No – " + r.error.message);
+          setCheck("Follows selected email", r.status === Office.AsyncResultStatus.Succeeded ? "Yes" : "No – " + r.error.message);
         });
       }
     });
