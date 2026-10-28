@@ -144,6 +144,7 @@
   // ---------- Config ----------
   // Web link for a record in Loxo. If "Open in Loxo" lands on the wrong page, this is the line to change.
   var LOXO_WEB = "https://pod2.app.loxo.co/agencies/40202";
+  var PANEL_VERSION = "1.2 (Loxo links fixed)";
 
   var PERSONAL_DOMAINS = [
     "gmail.com","googlemail.com","hotmail.com","hotmail.co.uk","outlook.com","live.com","live.co.uk",
@@ -434,6 +435,7 @@
       $("checkList").innerHTML = "";
       var canPin = Office.context.requirements.isSetSupported("Mailbox", "1.5");
       addCheck("Running in Outlook", "Yes");
+      addCheck("Panel version", PANEL_VERSION);
       addCheck("Pinning supported", canPin ? "Yes" : "No – pane will close between emails");
       addCheck("Loxo settings", isConfigured() ? "Saved" : "Not set");
       render();
