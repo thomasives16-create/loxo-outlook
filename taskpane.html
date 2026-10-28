@@ -269,7 +269,7 @@
 
 <script>
   // ---------- Config ----------
-  var PANEL_VERSION = "1.9 (add CV to Loxo)";
+  var PANEL_VERSION = "1.10 (salary editing)";
   var LOXO_WEB = "https://pod2.app.loxo.co/agencies/40202";
 
   // From TomTom: Hedgerway's Loxo tag fields
@@ -386,6 +386,8 @@
       owner: ownerId && users && users[ownerId] ? users[ownerId] : pick(p, ["owned_by.name", "owner.name"]),
       location: pick(p, ["location", "city"]),
       updated: fmtDate(pick(p, ["updated_at"])),
+      salaryRaw: p.salary != null && p.salary !== "" ? Math.round(parseFloat(p.salary)) : "",
+      bonusRaw: p.bonus != null && p.bonus !== "" ? parseFloat(p.bonus) : "",
       salary: p.salary ? "£" + Math.round(parseFloat(p.salary)).toLocaleString("en-GB") + (p.bonus != null && p.bonus !== "" ? " + " + parseFloat(p.bonus) + "% bonus" : "") : "",
       emails: personEmails(p)
     };
@@ -536,7 +538,7 @@
       save.disabled = same;
       save.textContent = same ? "Change status" : "Change to " + opt.text;
     }
-    open.onclick = function () { box.hidden = false; open.hidden = true; $("statusMsg").textContent = ""; label(); sel.focus(); };
+    open.onclick = function () { box.hidden = false; open.hidden = true; $("statusMsg").textContent = ""; if ($("salaryEdit")) $("salaryEdit").hidden = true; label(); sel.focus(); };
     $("statusCancel").onclick = function () { box.hidden = true; open.hidden = false; };
     sel.onchange = label;
     save.onclick = function () {
@@ -563,6 +565,77 @@
   function showCard(s) {
     $("loxo").innerHTML = recordHtml(s);
     wireStatusEdit(s);
+    wireSalaryEdit(s);
+  }
+
+  // ---------- Salary and bonus (TomTom's fields) ----------
+  function salaryEditHtml(s) {
+    return '<div class="status-edit" id="salaryEdit" hidden>' +
+      '<div style="display:flex;gap:10px">' +
+        '<div style="flex:1.4"><label class="lbl" for="salaryIn">Current salary (£)</label>' +
+        '<input class="field" id="salaryIn" inputmode="numeric" autocomplete="off" placeholder="e.g. 85,000" value="' + esc(s.salaryRaw === "" ? "" : Number(s.salaryRaw).toLocaleString("en-GB")) + '"></div>' +
+        '<div style="flex:1"><label class="lbl" for="bonusIn">Bonus (%)</label>' +
+        '<input class="field" id="bonusIn" inputmode="decimal" autocomplete="off" placeholder="e.g. 15" value="' + esc(s.bonusRaw === "" ? "" : String(s.bonusRaw)) + '"></div>' +
+      "</div>" +
+      '<div class="lbl" style="margin-top:4px">Leave a box empty to keep what\'s in Loxo.</div>' +
+      '<div class="actions"><button class="secondary" type="button" id="salarySave">Save salary</button>' +
+      '<button class="inline-link" type="button" id="salaryCancel" style="margin-top:0">Cancel</button></div></div>' +
+      '<div class="msg" id="salaryMsg" role="status"></div>';
+  }
+
+  // Accepts 85000, 85,000, £85k, 85.5k
+  function parseSalary(v) {
+    var t = String(v || "").toLowerCase().replace(/[£,\s]/g, "");
+    if (!t) return null;
+    var k = /k$/.test(t); if (k) t = t.slice(0, -1);
+    if (!/^\d+(\.\d+)?$/.test(t)) return NaN;
+    return Math.round(parseFloat(t) * (k ? 1000 : 1));
+  }
+  function parseBonus(v) {
+    var t = String(v || "").replace(/[%\s]/g, "");
+    if (!t) return null;
+    return /^\d+(\.\d+)?$/.test(t) ? parseFloat(t) : NaN;
+  }
+
+  function wireSalaryEdit(s) {
+    var open = $("salaryOpen"), box = $("salaryEdit");
+    if (!open || !box) return;
+    open.onclick = function () {
+      box.hidden = false; open.hidden = true; $("salaryMsg").textContent = "";
+      if ($("statusEdit")) $("statusEdit").hidden = true;
+      $("salaryIn").focus();
+    };
+    $("salaryCancel").onclick = function () { box.hidden = true; open.hidden = false; };
+    $("salarySave").onclick = function () {
+      var msg = $("salaryMsg"), btn = $("salarySave");
+      var sal = parseSalary($("salaryIn").value), bon = parseBonus($("bonusIn").value);
+      if (Number.isNaN(sal)) { msg.className = "msg err"; msg.textContent = "Enter the salary as a number, e.g. 85,000 or 85k."; return; }
+      if (Number.isNaN(bon)) { msg.className = "msg err"; msg.textContent = "Enter the bonus as a percentage, e.g. 15."; return; }
+      var body = {};
+      if (sal !== null && sal !== s.salaryRaw) body.salary = sal;
+      if (bon !== null && bon !== s.bonusRaw) body.bonus = bon;
+      if (!Object.keys(body).length) { box.hidden = true; open.hidden = false; return; }
+      var personId = s.id, token = current.token;
+      btn.disabled = true; btn.textContent = "Saving…";
+      loxoWrite("PUT", "/people/" + personId + "/salary", body).then(function () {
+        delete recordCache[personId];
+        return getRecord(personId);   // re-read so the card shows what Loxo actually stored
+      }).then(function (fresh) {
+        if (token !== current.token) return;
+        var ns = personSummary(fresh);
+        if (cache[current.email]) cache[current.email].summary = ns;
+        showCard(ns);
+        var missed = [];
+        if (body.salary !== undefined && ns.salaryRaw !== body.salary) missed.push("salary");
+        if (body.bonus !== undefined && ns.bonusRaw !== body.bonus) missed.push("bonus");
+        $("salaryMsg").className = "msg " + (missed.length ? "err" : "ok");
+        $("salaryMsg").textContent = missed.length ? "Saved, but Loxo didn't apply the " + missed.join(" or ") + ". Check it in Loxo." : "Salary saved.";
+      }, function (err) {
+        if (token !== current.token) return;
+        btn.disabled = false; btn.textContent = "Save salary";
+        msg.className = "msg err"; msg.textContent = "Not saved. " + (err.message || "");
+      });
+    };
   }
 
   function recordHtml(s) {
@@ -577,7 +650,9 @@
       (s.role ? '<div class="rec-role">' + esc(s.role) + "</div>" : "") +
       (pills.length ? '<div class="pills">' + pills.join("") + "</div>" : "") +
       (facts.length ? '<dl class="facts">' + facts.map(function (f) { return "<dt>" + esc(f[0]) + "</dt><dd>" + esc(f[1]) + "</dd>"; }).join("") + "</dl>" : "") +
-      (canStatus ? '<button class="inline-link" type="button" id="statusOpen">Change status</button>' + statusEditHtml(s) : "");
+      '<div class="actions">' + (canStatus ? '<button class="inline-link" type="button" id="statusOpen" style="margin-top:0">Change status</button>' : "") +
+        '<button class="inline-link" type="button" id="salaryOpen" style="margin-top:0">Edit salary</button></div>' +
+      (canStatus ? statusEditHtml(s) : "") + salaryEditHtml(s);
   }
 
   // ---------- Rendering: detail sections ----------
