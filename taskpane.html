@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Loxo Lookup</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cabin:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --red: #ED1C24;
+      --navy: #293C5B;
+      --charcoal: #2B2B2B;
+      --grey: #8C8D8E;
+      --line: #E3E5E9;
+      --wash: #F5F6F8;
+      --bg: #FFFFFF;
+      --font: "Cabin", "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --navy: #A9BCDB;
+        --charcoal: #E6E6E6;
+        --grey: #A0A2A4;
+        --line: #3A3F47;
+        --wash: #23272E;
+        --bg: #1B1E23;
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--charcoal); font-family: var(--font); }
+    body { padding: 18px 16px 24px; font-size: 14px; line-height: 1.45; }
+
+    .brand { display: flex; align-items: baseline; gap: 8px; margin-bottom: 22px; }
+    .brand strong { font-weight: 700; color: var(--navy); font-size: 13px; letter-spacing: 0.02em; }
+    .brand span { color: var(--grey); font-size: 12px; }
+
+    .who h1 { margin: 0; font-size: 22px; font-weight: 700; line-height: 1.2; color: var(--navy); overflow-wrap: anywhere; }
+    .who .email { margin-top: 4px; font-size: 14px; overflow-wrap: anywhere; }
+    .who .note { margin-top: 6px; font-size: 12px; color: var(--grey); }
+
+    .kind { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 3px 9px;
+            border: 1px solid var(--line); border-radius: 999px; font-size: 12px; color: var(--charcoal); }
+    .kind svg { width: 12px; height: 12px; flex: none; }
+
+    h2 { margin: 26px 0 10px; font-size: 14px; font-weight: 700; color: var(--navy);
+         padding-bottom: 6px; border-bottom: 2px solid var(--red); display: inline-block; }
+
+    .loxo { background: var(--wash); border-radius: 6px; padding: 12px 14px; font-size: 13px; }
+    .loxo p { margin: 0; }
+    .loxo p + p { margin-top: 6px; color: var(--grey); }
+
+    .primary { display: block; width: 100%; margin-top: 18px; padding: 10px 14px; border: 0; border-radius: 6px;
+               background: var(--navy); color: var(--bg); font: 600 14px var(--font); cursor: pointer; }
+    .primary:hover { filter: brightness(1.12); }
+    .primary:focus-visible, summary:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+
+    details { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 10px; font-size: 12px; color: var(--grey); }
+    summary { cursor: pointer; }
+    dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 10px 0 0; }
+    dt { color: var(--grey); }
+    dd { margin: 0; color: var(--charcoal); overflow-wrap: anywhere; }
+
+    .empty { padding-top: 8px; }
+    .empty h1 { font-size: 18px; color: var(--navy); margin: 0 0 6px; }
+    .empty p { margin: 0; color: var(--grey); }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="brand"><strong>Loxo Lookup</strong><span>Hedgerway</span></div>
+
+  <!-- Shown when there's an email to read -->
+  <main id="view" hidden>
+    <section class="who">
+      <h1 id="name"></h1>
+      <div class="email" id="email"></div>
+      <div class="note" id="note" hidden></div>
+      <div class="kind" id="kind"></div>
+    </section>
+
+    <h2>Loxo</h2>
+    <div class="loxo" id="loxo"></div>
+
+    <button class="primary" id="copyBtn" type="button">Copy email address</button>
+  </main>
+
+  <!-- Shown when nothing usable is selected, or when opened outside Outlook -->
+  <section class="empty" id="empty" hidden>
+    <h1 id="emptyTitle"></h1>
+    <p id="emptyText"></p>
+  </section>
+
+  <details id="checks">
+    <summary>Install check</summary>
+    <dl id="checkList"></dl>
+  </details>
+
+<script>
+  // Webmail domains: a match here means the sender used a personal address.
+  var PERSONAL_DOMAINS = [
+    "gmail.com","googlemail.com","hotmail.com","hotmail.co.uk","outlook.com","live.com","live.co.uk",
+    "msn.com","icloud.com","me.com","mac.com","yahoo.com","yahoo.co.uk","aol.com","btinternet.com",
+    "sky.com","virginmedia.com","protonmail.com","proton.me","talktalk.net"
+  ];
+
+  var ICONS = {
+    internal: '<svg viewBox="0 0 12 12" aria-hidden="true"><rect x="1.5" y="1.5" width="9" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>',
+    personal: '<svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="4" r="2.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M1.8 11c.6-2.2 2.2-3.3 4.2-3.3s3.6 1.1 4.2 3.3" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>',
+    work: '<svg viewBox="0 0 12 12" aria-hidden="true"><rect x="1.2" y="3.5" width="9.6" height="7" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M4 3.5V2.2h4v1.3" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>'
+  };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var currentEmail = "";
+
+  function domainOf(address) {
+    var at = (address || "").lastIndexOf("@");
+    return at === -1 ? "" : address.slice(at + 1).toLowerCase();
+  }
+
+  function classify(address, ownDomain) {
+    var d = domainOf(address);
+    if (d && d === ownDomain) return { type: "internal", label: "Internal – a colleague" };
+    if (PERSONAL_DOMAINS.indexOf(d) !== -1) return { type: "personal", label: "Personal address" };
+    return { type: "work", label: "Work address at " + d };
+  }
+
+  // STEP 2 GOES HERE. Will call your own backend (never Loxo directly – the API key
+  // must not live in this file, which anyone with the add-in can read).
+  function lookupInLoxo(email) {
+    return Promise.resolve({ status: "not-connected" });
+  }
+
+  function renderLoxo(result, kind) {
+    var box = $("loxo");
+    if (kind === "internal") {
+      box.innerHTML = "<p>Internal emails are skipped.</p>";
+      return;
+    }
+    if (result.status === "not-connected") {
+      box.innerHTML = "<p>Not connected to Loxo yet.</p><p>The matching candidate or contact record will show here once the lookup is set up.</p>";
+    }
+  }
+
+  function showEmpty(title, text) {
+    $("view").hidden = true;
+    $("empty").hidden = false;
+    $("emptyTitle").textContent = title;
+    $("emptyText").textContent = text;
+  }
+
+  function render() {
+    var mailbox = Office.context.mailbox;
+    var item = mailbox.item;
+
+    if (!item || item.itemType !== Office.MailboxEnums.ItemType.Message || !item.from) {
+      showEmpty("No email selected", "Select an email to see who sent it.");
+      return;
+    }
+
+    var me = (mailbox.userProfile.emailAddress || "").toLowerCase();
+    var ownDomain = domainOf(me);
+    var person = item.from;
+    var note = "";
+
+    // In Sent Items the sender is you, so show who you wrote to instead.
+    if ((person.emailAddress || "").toLowerCase() === me && item.to && item.to.length) {
+      person = item.to[0];
+      note = item.to.length > 1
+        ? "You sent this. Showing the first of " + item.to.length + " recipients."
+        : "You sent this. Showing the recipient.";
+    }
+
+    currentEmail = person.emailAddress || "";
+    var kind = classify(currentEmail, ownDomain);
+
+    $("empty").hidden = true;
+    $("view").hidden = false;
+    $("name").textContent = person.displayName || currentEmail;
+    $("email").textContent = currentEmail;
+    $("note").hidden = !note;
+    $("note").textContent = note;
+    $("kind").innerHTML = ICONS[kind.type] + "<span></span>";
+    $("kind").lastChild.textContent = kind.label;
+
+    var copyBtn = $("copyBtn");
+    copyBtn.textContent = "Copy email address";
+
+    if (kind.type === "internal") {
+      renderLoxo({}, "internal");
+    } else {
+      $("loxo").innerHTML = "<p>Checking Loxo…</p>";
+      var requested = currentEmail;
+      lookupInLoxo(requested).then(function (result) {
+        if (requested === currentEmail) renderLoxo(result, kind.type); // ignore stale replies
+      });
+    }
+  }
+
+  function copyEmail() {
+    var btn = $("copyBtn");
+    var done = function () {
+      btn.textContent = "Copied";
+      setTimeout(function () { btn.textContent = "Copy email address"; }, 1800);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(currentEmail).then(done, fallback);
+    } else { fallback(); }
+    function fallback() {
+      var t = document.createElement("textarea");
+      t.value = currentEmail; t.setAttribute("readonly", "");
+      t.style.position = "fixed"; t.style.opacity = "0";
+      document.body.appendChild(t); t.select();
+      try { document.execCommand("copy"); done(); } catch (e) { btn.textContent = "Copy failed – select the address instead"; }
+      document.body.removeChild(t);
+    }
+  }
+
+  function addCheck(label, value) {
+    var dt = document.createElement("dt"); dt.textContent = label;
+    var dd = document.createElement("dd"); dd.textContent = value;
+    $("checkList").appendChild(dt); $("checkList").appendChild(dd);
+  }
+
+  // Opened in a normal browser (e.g. checking your GitHub Pages link)
+  var officeTimer = setTimeout(function () {
+    showEmpty("Hosting works", "This page loaded correctly. Open it from the Loxo Lookup button in Outlook to see sender details.");
+    addCheck("Running in Outlook", "No – opened in a browser");
+  }, 6000);
+
+  if (typeof Office !== "undefined") {
+    Office.onReady(function (info) {
+      if (info.host !== Office.HostType.Outlook) return;
+      clearTimeout(officeTimer);
+      $("checkList").innerHTML = "";
+
+      var canPin = Office.context.requirements.isSetSupported("Mailbox", "1.5");
+      var diag = Office.context.diagnostics || {};
+      addCheck("Running in Outlook", "Yes");
+      addCheck("Outlook version", (diag.hostName || "Unknown") + " " + (diag.hostVersion || ""));
+      addCheck("Pinning supported", canPin ? "Yes" : "No – pane will close between emails");
+
+      $("copyBtn").addEventListener("click", copyEmail);
+      render();
+
+      if (canPin) {
+        Office.context.mailbox.addHandlerAsync(Office.EventType.ItemChanged, render, function (r) {
+          addCheck("Follows selected email", r.status === Office.AsyncResultStatus.Succeeded ? "Yes" : "No – " + r.error.message);
+        });
+      } else {
+        addCheck("Follows selected email", "No");
+      }
+    });
+  }
+</script>
+</body>
+</html>
