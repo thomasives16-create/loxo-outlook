@@ -74,6 +74,8 @@
     .intake p { margin: 0; }
     .intake ul, .intake ol { margin: 4px 0; padding-left: 18px; }
 
+    .acts-wrap { max-height: 380px; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+    .acts-count { font-size: 12px; color: var(--grey); margin-bottom: 6px; }
     .acts { list-style: none; margin: 0; padding: 0; }
     .acts li { padding: 8px 0; border-top: 1px solid var(--line); }
     .acts li:first-child { border-top: 0; padding-top: 0; }
@@ -99,6 +101,15 @@
     .thread .t-name { font-weight: 600; overflow-wrap: anywhere; }
     .thread .t-tag { font-size: 11px; color: var(--grey); white-space: nowrap; }
     .thread small { display: block; color: var(--grey); font-size: 12px; overflow-wrap: anywhere; }
+
+    .tag-edit .cat { margin-bottom: 14px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+    .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; padding: 2px 4px 2px 9px;
+            border: 1px solid var(--navy); border-radius: 999px; }
+    .chip button { all: unset; cursor: pointer; width: 18px; height: 18px; line-height: 18px; text-align: center; border-radius: 50%; font-size: 13px; }
+    .chip button:hover { background: var(--wash); }
+    .chip button:focus-visible { outline: 2px solid var(--red); }
+    .chip.locked { border-style: dashed; padding-right: 9px; }
 
     dl.tags { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; font-size: 12px; }
     dl.tags dt { color: var(--grey); }
@@ -223,6 +234,7 @@
       <section class="section" id="tagsSec" hidden>
         <h2>Tags</h2>
         <div id="tags"></div>
+        <div class="msg" id="tagsMsg" role="status"></div>
       </section>
     </div>
   </main>
@@ -235,6 +247,10 @@
   <details class="checks" id="checks">
     <summary>Install check</summary>
     <dl id="checkList"></dl>
+    <div id="diagWrap" hidden style="margin-top:10px">
+      <button class="inline-link" type="button" id="diagBtn" style="margin-top:0">Run intake notes check</button>
+      <div id="diagOut" style="margin-top:6px"></div>
+    </div>
     <div id="rawWrap" hidden>
       <p style="margin:12px 0 4px">Last Loxo response (for fixing field names)</p>
       <pre id="raw"></pre>
@@ -243,7 +259,7 @@
 
 <script>
   // ---------- Config ----------
-  var PANEL_VERSION = "1.6 (status, intake editing, logging)";
+  var PANEL_VERSION = "1.7 (tag editing, activity scroll)";
   var LOXO_WEB = "https://pod2.app.loxo.co/agencies/40202";
 
   // From TomTom: Hedgerway's Loxo tag fields
@@ -260,6 +276,10 @@
     ["custom_hierarchy_10", "Contract", "bool"]
   ];
   var STATUS_FIELD = "custom_hierarchy_25";
+  // From TomTom's HARD_TAG_ID_MAP: [name, Loxo ID] per tag field
+  var TAG_OPTIONS = {"custom_hierarchy_11":[["1 Month",82923],["1 Week",83064],["2 Months",82816],["2 Weeks",82917],["3 Months",82795],["3 Weeks",83181],["4 Months",83315],["4 Weeks",82856],["5 Months",83556],["6 Months",83091],["6 Weeks",83163],["Immediate",82853]],"custom_hierarchy_5":[["AAT",82710],["ACA",82640],["ACCA",82635],["ACMA",82702],["ACT",82711],["AMCT",82984],["ATT",83010],["CA (Aus)",82798],["CA (Can)",83153],["CA (IND)",83118],["CA (Ire)",82814],["CA (NL)",83246],["CA (NZ)",82792],["CA (Other)",82902],["CA (PAK)",82819],["CA (SA)",82826],["CFA",82883],["CIIA",83021],["CPA",82857],["CPA (AUS)",83038],["CPA (NZ)",83298],["CPA (US)",82887],["CPA Other",82946],["CTA",82897],["ICAEW",82681],["ICAS",82669],["MBA",82916],["Prince 2",83087],["QBE",82936]],"custom_hierarchy_4":[["Accounting Policy",82930],["Asset/Portfolio Management",82881],["Bids/Tenders",83195],["Business/Data Analyst",82665],["Commercial Accounting",82646],["Compliance",83090],["Consolidations",82929],["Corporate Finance/M&A",82817],["Corporate Tax",83137],["Cost Accounting",82958],["Debt Financing",83059],["Economist",82960],["ESG",82922],["External Audit",82664],["External Reporting",82820],["FBP - Finance Business Partner",82701],["Financial Accounting",82657],["Financial Analysis",82805],["FP&A - Financial Planning & Analysis",82828],["Fund Accounting",82634],["Fundraising",82980],["Group Accounting",82658],["HR / Talent Acquisition",83020],["IFRS",82898],["Internal Audit",82773],["Internal Controls",83144],["Investment Professional",82767],["Investor Relations",82833],["Joint Venture Accounting",82901],["Management Accounting",82725],["Modelling",82903],["Part-Time",82977],["PE Investors",83004],["Pricing",83251],["Product Control",83156],["Project Accounting",82880],["Project Finance",82942],["Property Accountant",83119],["Real Estate Tax",83140],["Regulatory Reporting",82823],["Restructuring",83138],["Revenue Accounting",83039],["Risk",82894],["SOX",82975],["Specialist Markets",82712],["Specialist Roles",82663],["SSC",83045],["Statutory Accounts",82904],["Strategy",82647],["Systems Accountant",83089],["Systems Implementation",83013],["Tax",82865],["Tax Advisory",83135],["Tax Structuring",83136],["Transaction (IPO/Sale)",83023],["Transformation/Change",82729],["Treasury",82713],["US GAAP",83000],["Valuations",83016],["VAT / Indirect Tax",82968]],"custom_hierarchy_2":[["Advertising & P.R",82780],["Aerospace & Defence",82849],["Agriculture",83071],["AIM",82831],["App",83044],["Apparel",82800],["Architecture",82948],["Asset Management",82631],["Automotive",82645],["Aviation",82810],["Banking",82666],["Bars, Restaurants & Cafes",82802],["Beverages",82941],["Big 4",82656],["Biotech & Life Sciences",83093],["Blockchain",83003],["Brokers & Traders",82813],["BTR",82890],["Business Services",82667],["Challenger Bank",82822],["Charities",82715],["Chemicals",82818],["ClimateTech",83051],["Commodities Trading",82751],["Company Type",82774],["Construction",82721],["Consulting Services",82668],["Consumer Electronics",82827],["Corporate Finance",82797],["Data",82791],["Data Centres",83008],["Debt/Credit",82627],["Distribution",82989],["Downstream & Refining",82884],["ecommerce",82760],["Education",82850],["Electronics",82709],["Energy & Utilities",82754],["Engineering",82761],["Entertainment",82676],["Estate Agents",82915],["Events",83006],["Facilities Management",82815],["Family Office",82848],["Fast Track 100",83078],["Film & Video",82678],["Financial Services",82630],["FinTech",82690],["Fit Out",83108],["FMCG",82708],["Food",82777],["FTSE100",82776],["FTSE250",82877],["Fund Administration",82744],["FX & Mony Markets",82938],["Gambling",82696],["Gaming",82796],["Government",83031],["Health & Beauty",82793],["Healthcare",82688],["Hedge Fund",82900],["HFT High Frequency Trading",83142],["High Street",82840],["Hospital & Health Care",82870],["Hotels & Accomodation",82858],["HouseBuilders",82722],["Housing Association",82925],["Infrastructure Assets",82844],["Infrastructure Investment",82845],["Insurance",82879],["Internet",82639],["Investment Banking",82770],["Investment Management",82768],["Law Firms",82838],["Leisure",82675],["Lending",82862],["Logistics",82695],["Luxury",82782],["Manufacturing",82724],["Media",82677],["Medical Devices",82706],["Mid Tier",82785],["Mid-Market",83161],["Mining",82832],["Music",83053],["Natural Resources",82653],["NHS",82919],["Not For Profit",82906],["Office Space",82896],["Oil & Gas",82654],["Oil Field Services",82962],["Outsourcing",82965],["Payments",82691],["PE Backed",82790],["Pharma",82705],["PLC",82775],["Practice",82655],["Print & Design",83178],["Private Credit",82633],["Private Equity Fund",82632],["Property",82719],["Property Management",83042],["Publishing",82873],["Rail",83061],["RE - Commercial",83223],["RE - Debt",83215],["RE - Living",83029],["RE - Logistics",82982],["RE - Retail",82757],["RE - Student Accomodation",83028],["Real Estate",82720],["Real Estate Audit",82967],["Real Estate Investment",82745],["Real Estate Logistics",83260],["Real Estate Retirement",83081],["Real Estate Student",83175],["Recruitment & Search",82786],["REIT",83116],["Renewable Energy",82750],["Renewables Investment",82997],["Retail",82638],["Risk Management",83037],["SaaS",82697],["Secondaries",149945],["Securities",83131],["Shipping",82910],["Small / Regional Practice",82876],["SME <\u00a325m",82892],["Software",82672],["Special Situations",83160],["Sports & Recreation",82935],["Start Up/Scale Up",82972],["supermarket",83012],["Tech Track 100 - 2016",83079],["Technology",82671],["Telco's",82682],["Television",82680],["Top 20",82659],["Transport",82644],["Travel & Tourism",82728],["U.S Owned",82978],["VCT",83033],["Venture Capital",83032],["Waste Management",83055],["Wealth Management",82836],["Wholesale",82841]],"custom_hierarchy_6":[["Bedfordshire",83124],["Benelux",82734],["Berkshire",83017],["Bradford",83307],["Buckinghamshire",82945],["California",82959],["Cambridgeshire",82851],["Central (Zone 1 Only)",83194],["Channel Islands",83157],["Cheshire",82852],["Denmark",83050],["Derbyshire",82824],["Devon",83025],["Dorset",83265],["East of England",82726],["East/City/Docklands",82979],["EMEA",83277],["England",82636],["Essex",82727],["Europe",83278],["Florida",83272],["France",82762],["Germany",82755],["Greater Manchester",83085],["Hampshire",82878],["Harrogate",82842],["Hertfordshire",82860],["Hull",83183],["International",82733],["Ireland",82764],["Italy",82847],["Kent",83015],["Lancashire",82686],["Leeds",83106],["Leicestershire",82920],["Lincolnshire",83182],["London",82637],["Luxembourg",82746],["Massachusetts",82988],["Middle East",83096],["Middlesex",82908],["Midlands",82803],["Netherlands",83047],["New York",82950],["Nordics",82947],["North Home Counties",82859],["North London",83094],["Northamptionshire",83121],["Nottinghamshire",82804],["Oxfordshire",83056],["Portugal",83245],["Scotland",82778],["Sheffield",83212],["Shropshire",83318],["Somerset",83240],["South Home Counties",82912],["South London",82944],["Spain",83205],["Staffordshire",83120],["Suffolk",82951],["Surrey",82913],["Sussex",83014],["Switzerland",83066],["Thames Valley/West",82809],["The North",82685],["USA",82931],["Wakfield",83303],["Wales",82985],["Warwickshire",83095],["West",82806],["West London",82854],["Worcestershire",83319],["York",83230],["Yorkshire",82703]],"custom_hierarchy_15":[["C-Suite (CEO/CFO/MD)",83114],["Divisional FD",83113],["Executive (Group FD/FD)",83065],["Finance Manager",83208],["Group FC",83143],["Senior Manager (FC/Head of Finance)",85571]],"custom_hierarchy_8":[["Agile/Scrum",82955],["Applications Management",83168],["Architecture",82952],["Artificial Intelligence",83252],["Automation/RPA",82974],["AZURE",83234],["Back End Development",82731],["Business Analyst",82752],["Business Continuity",83125],["Business Intelligence",83048],["C#",82866],["C++",82885],["CIO (Cheif Information Officer)",82863],["CISO",82692],["Cloud & DevOps - Delivery",82970],["Cloud Architect",83308],["Cloud Technologies",83147],["CRM",82834],["CTO",82649],["Cyber",83018],["Cyber Security",82689],["CyberArk",83248],["Data Analytics",83127],["Data Architect",83203],["Data Management",82907],["Data Privacy",83133],["Data Science",82995],["Delivery",82969],["Delivery Manager",83076],["Development Management",83180],["Device Delivery",83049],["DevOps",82736],["DevSecOps",82986],["Digital Project Manager",83040],["Digital Transformation",82869],["Engineering",82763],["Enterprise Architect",82973],["ERP",83086],["ETRM",82753],["Front End Development",82737],["Golang",83187],["Head of IT",82868],["Head of IT Security",83019],["HPC",82987],["IAM",83098],["IAM Solution Architect",83249],["Information Security Officer",83126],["Infrastructure Management",82872],["ISO27001",83384],["IT Business Partner",82991],["IT Governance",83068],["IT Leadership",82648],["IT Operations",82926],["Java",82886],["JavaScript",82740],["Lead Developer",82983],["Linux",82741],["Medical Technology",83046],["PAM",83250],["Payments",82893],["Pen Test",82698],["PHP",83102],["PMO",83123],["Pre-Sales",82954],["Product Director",82963],["Product Management",82956],["Product Manager",83009],["Product Owner",82957],["Programme Management",82716],["Programme Manager",82927],["Project Manager",82928],["Python",82765],["QA/Test",83329],["R&D",83105],["React",82999],["Rust",82732],["Security Analyst",83139],["Security Architect",83199],["Service Management",83067],["Software Architect",83286],["Software Development",82730],["Software Engineer",83567],["Solution Architect",82953],["Typescript",82738],["VP Engineering",83001],["Windows",83062],["Workday",83228]]};
+  var YESNO_IDS = { custom_hierarchy_3: { yes: 82629, no: 82630 }, custom_hierarchy_10: { yes: 82700, no: 82701 } };
+  var SINGLE_TAG = ["custom_hierarchy_15", "custom_hierarchy_11"];
   // From TomTom: Hedgerway's candidate statuses and their Loxo IDs
   var STATUSES = [["Active",160228],["Passive",160229],["Immediate",160232],["Under Offer",160281],["Placed",160234],
                   ["Inactive",160230],["Abroad",160231],["Sponsored",160233],["Competitor Booking",160235],["STOP LIST",160241]];
@@ -377,7 +397,7 @@
         if (r.status === 429 && attempt < 3) return sleep(1200 * (attempt + 1)).then(function () { return loxoGet(path, attempt + 1); });
         if (r.status === 401) throw { kind: "auth" };
         if (r.status === 403) throw { kind: "origin" };
-        if (r.status === 404 && attempt === 0 && !/^\/people/.test(path)) throw { kind: "worker-old" };
+        if (r.status === 404 && attempt === 0 && (!/^\/people/.test(path) || /note-check$/.test(path))) throw { kind: "worker-old" };
         if (!r.ok) throw { kind: "http", status: r.status };
         return r.json();
       }, function () { throw { kind: "network" }; });
@@ -577,7 +597,7 @@
     });
   }
 
-  function renderTags(p) {
+  function tagReadHtml(p) {
     var rows = [];
     TAG_FIELDS.forEach(function (f) {
       var vals = fieldValues(p, f[0]);
@@ -588,8 +608,147 @@
       else shown = vals.join(", ");
       rows.push("<dt>" + esc(f[1]) + "</dt><dd>" + esc(shown) + "</dd>");
     });
-    $("tagsSec").hidden = !rows.length;
-    $("tags").innerHTML = '<dl class="tags">' + rows.join("") + "</dl>";
+    return rows;
+  }
+
+  function renderTags(p, msg) {
+    var rows = tagReadHtml(p);
+    $("tagsSec").hidden = false;
+    $("tags").innerHTML = (rows.length ? '<dl class="tags">' + rows.join("") + "</dl>" : '<span class="muted">No tags yet.</span>') +
+      '<div class="actions"><button class="inline-link" type="button" id="tagsEditBtn" style="margin-top:0">Edit tags</button></div>';
+    $("tagsEditBtn").onclick = function () { renderTagEdit(p); };
+    $("tagsMsg").className = "msg" + (msg ? " " + msg[0] : ""); $("tagsMsg").textContent = msg ? msg[1] : "";
+  }
+
+  // Current tags on the record as {field: [{name, id}]}; id may be missing if Loxo didn't send it and TomTom's map doesn't know it
+  function currentTagState(p) {
+    var st = {};
+    TAG_FIELDS.forEach(function (f) {
+      var field = f[0];
+      if (f[2] === "date" || f[2] === "bool") return;
+      st[field] = [].concat(p[field] || []).filter(Boolean).map(function (x) {
+        var name = typeof x === "object" ? (x.value || x.name || "") : String(x);
+        var id = typeof x === "object" && Number.isInteger(x.id) ? x.id : null;
+        if (!id) { var hit = (TAG_OPTIONS[field] || []).find(function (o) { return o[0].toLowerCase() === name.toLowerCase(); }); if (hit) id = hit[1]; }
+        return { name: name, id: id };
+      });
+    });
+    return st;
+  }
+
+  function renderTagEdit(p) {
+    var personId = p.id, token = current.token;
+    var state = currentTagState(p), original = JSON.stringify(state);
+    var yn = {};
+    ["custom_hierarchy_3", "custom_hierarchy_10"].forEach(function (f) {
+      var v = (fieldValues(p, f)[0] || "").toLowerCase();
+      yn[f] = v === "true" || v === "yes" ? "yes" : v === "false" || v === "no" ? "no" : "";
+    });
+    var ynOriginal = JSON.stringify(yn);
+    var qd = fieldValues(p, "custom_date_range_4")[0], qYearOrig = "";
+    if (qd) { var dd = new Date(qd); if (!isNaN(dd)) qYearOrig = String(dd.getFullYear()); }
+
+    function draw() {
+      var html = '<div class="tag-edit">';
+      TAG_FIELDS.forEach(function (f) {
+        var field = f[0], label = f[1];
+        html += '<div class="cat"><label class="lbl" for="add-' + field + '">' + esc(label) + (SINGLE_TAG.indexOf(field) !== -1 ? " (one)" : "") + "</label>";
+        if (f[2] === "date") {
+          html += '<input class="field" id="qyear" inputmode="numeric" maxlength="4" placeholder="Year, e.g. 2016" value="' + esc(qYearInput) + '" style="width:9em">';
+        } else if (f[2] === "bool") {
+          html += '<select class="field" id="add-' + field + '" data-yn="' + field + '" style="width:9em">' +
+            '<option value=""' + (yn[field] === "" ? " selected" : "") + ' disabled>Not set</option>' +
+            '<option value="yes"' + (yn[field] === "yes" ? " selected" : "") + ">Yes</option>" +
+            '<option value="no"' + (yn[field] === "no" ? " selected" : "") + ">No</option></select>";
+        } else {
+          var chosen = state[field] || [];
+          html += '<div class="chips">' + chosen.map(function (t, i) {
+            return t.id ? '<span class="chip">' + esc(t.name) + '<button type="button" data-rm="' + field + '" data-i="' + i + '" aria-label="Remove ' + esc(t.name) + '">×</button></span>'
+                        : '<span class="chip locked" title="Change this one in Loxo">' + esc(t.name) + "</span>";
+          }).join("") + "</div>";
+          var taken = chosen.map(function (t) { return t.id; });
+          html += '<input class="field" id="add-' + field + '" list="opts-' + field + '" placeholder="' + (chosen.length && SINGLE_TAG.indexOf(field) !== -1 ? "Replace…" : "Add…") + '" autocomplete="off">' +
+            '<datalist id="opts-' + field + '">' + (TAG_OPTIONS[field] || []).filter(function (o) { return taken.indexOf(o[1]) === -1; })
+              .map(function (o) { return '<option value="' + esc(o[0]) + '"></option>'; }).join("") + "</datalist>";
+        }
+        html += "</div>";
+      });
+      html += '<div class="actions"><button class="secondary" type="button" id="tagsSave">Save tags</button>' +
+              '<button class="inline-link" type="button" id="tagsCancel" style="margin-top:0">Cancel</button></div></div>';
+      $("tags").innerHTML = html;
+      $("tagsMsg").className = "msg"; $("tagsMsg").textContent = "";
+
+      $("tags").querySelectorAll("button[data-rm]").forEach(function (b) {
+        b.onclick = function () { state[b.getAttribute("data-rm")].splice(parseInt(b.getAttribute("data-i"), 10), 1); draw(); };
+      });
+      $("tags").querySelectorAll("input[list]").forEach(function (inp) {
+        var field = inp.id.replace("add-", "");
+        var done = false;
+        function tryAdd(fromEnter) {
+          if (done || !inp.isConnected) return;
+          var typed = inp.value.trim();
+          if (!typed) return;
+          var hit = (TAG_OPTIONS[field] || []).find(function (o) { return o[0].toLowerCase() === typed.toLowerCase(); });
+          if (!hit) {
+            if (fromEnter) { $("tagsMsg").className = "msg err"; $("tagsMsg").textContent = "Pick a value from the list for " + (TAG_FIELDS.find(function (x) { return x[0] === field; }) || ["", "this tag"])[1] + "."; }
+            return;
+          }
+          done = true;
+          if (SINGLE_TAG.indexOf(field) !== -1) state[field] = [];
+          if (!state[field].some(function (t) { return t.id === hit[1]; })) state[field].push({ name: hit[0], id: hit[1] });
+          setTimeout(function () { draw(); var again = $("add-" + field); if (again) again.focus(); }, 0);
+        }
+        inp.addEventListener("change", function () { tryAdd(false); });
+        inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); tryAdd(true); } });
+      });
+      $("tags").querySelectorAll("select[data-yn]").forEach(function (sel) {
+        sel.onchange = function () { yn[sel.getAttribute("data-yn")] = sel.value; };
+      });
+      var qy = $("qyear"); if (qy) qy.oninput = function () { qYearInput = qy.value.replace(/\D/g, "").slice(0, 4); };
+      $("tagsCancel").onclick = function () { renderTags(recordCache[personId] || p); };
+      $("tagsSave").onclick = save;
+    }
+
+    var qYearInput = qYearOrig;
+
+    function save() {
+      var fields = {}, origState = JSON.parse(original), origYn = JSON.parse(ynOriginal);
+      Object.keys(state).forEach(function (f) {
+        var now = state[f].map(function (t) { return t.id; }).filter(function (id, i, a) { return a.indexOf(id) === i; }), was = origState[f].map(function (t) { return t.id; });
+        if (JSON.stringify(now.slice().sort()) === JSON.stringify(was.slice().sort())) return;
+        if (state[f].some(function (t) { return !t.id; })) return;  // locked values: leave that field alone
+        fields[f] = now;
+      });
+      Object.keys(yn).forEach(function (f) { if (yn[f] && yn[f] !== origYn[f]) fields[f] = [YESNO_IDS[f][yn[f]]]; });
+      var body = { fields: fields };
+      if (qYearInput && qYearInput !== qYearOrig) {
+        if (!/^(19[5-9]\d|20\d\d)$/.test(qYearInput)) { $("tagsMsg").className = "msg err"; $("tagsMsg").textContent = "Enter the qualified year as four digits, e.g. 2016."; return; }
+        body.qualified_year = parseInt(qYearInput, 10);
+      }
+      if (!Object.keys(fields).length && body.qualified_year === undefined) { renderTags(recordCache[personId] || p); return; }
+      var btn = $("tagsSave"); btn.disabled = true; btn.textContent = "Saving…";
+      var expected = fields;
+      loxoWrite("PUT", "/people/" + personId + "/tags", body).then(function () {
+        delete recordCache[personId];
+        return getRecord(personId);       // re-read so the panel shows what Loxo actually saved
+      }).then(function (fresh) {
+        if (token !== current.token) return;
+        var after = currentTagState(fresh), notApplied = [];
+        Object.keys(expected).forEach(function (f) {
+          if (YESNO_IDS[f]) return;
+          var want = expected[f].slice().sort().join(","), got = (after[f] || []).map(function (t) { return t.id; }).filter(Boolean).sort().join(",");
+          if (want !== got) notApplied.push((TAG_FIELDS.find(function (x) { return x[0] === f; }) || [f, f])[1]);
+        });
+        renderTags(fresh, notApplied.length ? ["err", "Saved, but Loxo didn't apply: " + notApplied.join(", ") + ". Check these in Loxo."] : ["ok", "Tags saved."]);
+        if (cache[current.email]) { cache[current.email].summary = personSummary(fresh); }
+        showCard(personSummary(fresh));
+      }, function (err) {
+        if (token !== current.token) return;
+        btn.disabled = false; btn.textContent = "Save tags";
+        $("tagsMsg").className = "msg err"; $("tagsMsg").textContent = "Tags not saved. " + (err.message || "");
+      });
+    }
+    draw();
   }
 
   // Sanitise Loxo's rich-text note (based on TomTom's sanitiser; drops colours/fonts so it reads in dark mode)
@@ -629,7 +788,10 @@
   }
   function readNote(id) {
     return loxoGraphQL(INTAKE_QUERY, { id: id }).then(function (j) {
-      return (j && j.data && j.data.person && j.data.person.note) || null;
+      // Loxo answers "person: null" when it won't serve this record to an API key –
+      // that is NOT the same as the person having no notes.
+      if (!j || !j.data || !j.data.person) throw { kind: "noperson" };
+      return j.data.person.note || null;
     });
   }
 
@@ -716,9 +878,11 @@
       if (token !== current.token) return;
       var why = err.kind === "network" ? "Couldn't reach the Worker." :
                 err.status === 404 || err.status === 405 ? "The Worker is out of date." :
-                "Loxo didn't accept the API key for intake notes.";
-      setCheck("Intake notes", "Not available – " + (typeof err.detail === "string" ? err.detail.slice(0, 120) : (err.status || err.kind)));
+                "Loxo isn't sharing intake notes with the API key.";
+      setCheck("Intake notes", "Not available – " + (err.kind === "noperson" ? "Loxo returned no person for the API key" :
+               typeof err.detail === "string" ? err.detail.slice(0, 120) : (err.status || err.kind)));
       box.innerHTML = '<p class="muted" style="margin:0">' + esc(why) + " Open the record in Loxo to see them.</p>";
+      $("diagWrap").hidden = false;
     });
   }
 
@@ -775,20 +939,21 @@
   function loadActivity(id, token) {
     var box = $("activity");
     box.innerHTML = '<span class="muted">Loading…</span>';
-    loxoGet("/person_events?person_id=" + encodeURIComponent(id)).then(function (json) {
+    loxoGet("/person_events?person_id=" + encodeURIComponent(id) + "&limit=100").then(function (json) {
       if (token !== current.token) return;
       var events = (json.person_events || json.events || (Array.isArray(json) ? json : []))
         .filter(function (e) { return e.notes && String(e.notes).trim(); })
-        .sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); })
-        .slice(0, 5);
+        .sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); });
       if (!events.length) { box.innerHTML = '<span class="muted">No activity recorded yet.</span>'; return; }
-      box.innerHTML = '<ul class="acts">' + events.map(function (e, i) {
+      box.innerHTML = '<div class="acts-count">' + events.length + (events.length >= 100 ? "+ " : " ") +
+        (events.length === 1 ? "activity" : "activities") + ", newest first. Click one to expand." + "</div>" +
+        '<div class="acts-wrap" tabindex="0" aria-label="Activity history"><ul class="acts">' + events.map(function (e, i) {
         var who = users && users[e.created_by_id] ? users[e.created_by_id] : "";
         var body = cleanActivity(e.notes, e.activity_type_id) || "(no text)";
         return '<li><div class="act-head"><span class="act-type">' + esc(ACTIVITY_TYPES[e.activity_type_id] || "Activity") + "</span>" +
           '<span class="act-meta">' + esc([who, fmtDate(e.created_at)].filter(Boolean).join(", ")) + "</span></div>" +
           '<div class="act-body clamped" data-i="' + i + '" title="Click to expand">' + esc(body) + "</div></li>";
-      }).join("") + "</ul>";
+      }).join("") + "</ul></div>";
       box.querySelectorAll(".act-body").forEach(function (el) {
         el.style.cursor = "pointer";
         el.onclick = function () { el.classList.toggle("clamped"); };
@@ -1017,6 +1182,24 @@
     checkEls[label].textContent = value;
   }
 
+  function runDiag() {
+    var out = $("diagOut");
+    if (!current.personId) { out.textContent = "Open an email from someone who's in Loxo first."; return; }
+    out.textContent = "Checking…";
+    loxoGet("/people/" + current.personId + "/note-check").then(function (r) {
+      var g = r.graphql || {};
+      var lines = [
+        "GraphQL answered: HTTP " + g.status + (g.json ? "" : " (not JSON" + (g.text_start ? ': "' + g.text_start + '"' : "") + ")"),
+        "Person returned: " + g.person + ", note: " + g.note,
+        g.errors && g.errors.length ? "Loxo said: " + g.errors.join(" / ") : "Loxo errors: none",
+        "Note-like fields on the record: " + ((r.rest_fields || []).map(function (f) { return f.field + " (" + f.type + ", " + f.length + " chars)"; }).join(", ") || "none")
+      ];
+      out.innerHTML = "<pre>" + esc(lines.join("\n")) + "</pre><p style='margin:4px 0 0'>Screenshot this and send it over. It contains no note text.</p>";
+    }, function (err) {
+      out.textContent = err.kind === "worker-old" ? "The Worker needs updating first (version 5)." : "Check failed: " + (err.kind || "error");
+    });
+  }
+
   // ---------- Wiring ----------
   $("settingsBtn").addEventListener("click", showSettings);
   $("cancelSettings").addEventListener("click", function () { if (window.Office && Office.context && Office.context.mailbox) render(); });
@@ -1033,6 +1216,7 @@
   $("workerUrl").addEventListener("input", function () { this.setCustomValidity(""); });
   $("primaryBtn").addEventListener("click", function () { if (primaryAction) primaryAction(); });
   $("copyBtn").addEventListener("click", copyEmail);
+  $("diagBtn").addEventListener("click", runDiag);
 
   var officeTimer = setTimeout(function () {
     showEmpty("Hosting works", "This page loaded correctly. Open it from the Loxo Lookup button in Outlook to see sender details.");
