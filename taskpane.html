@@ -85,6 +85,15 @@
     .act-body { margin-top: 3px; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
     .act-body.clamped { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 
+    .cvs { list-style: none; margin: 0; padding: 0; }
+    .cvs li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px;
+              border: 1px solid var(--line); border-radius: 6px; }
+    .cvs li + li { margin-top: 6px; }
+    .cv-name { font-size: 13px; overflow-wrap: anywhere; }
+    .cv-name small { display: block; color: var(--grey); font-size: 12px; }
+    .cvs .secondary { white-space: nowrap; }
+    .cvs .done { font-size: 12px; font-weight: 600; color: var(--ok); white-space: nowrap; }
+    .cv-msg { font-size: 12px; margin-top: 4px; }
     .jobs { list-style: none; margin: 0; padding: 0; }
     .jobs li + li { margin-top: 6px; }
     .jobs button { all: unset; box-sizing: border-box; cursor: pointer; display: block; width: 100%; padding: 7px 10px;
@@ -202,6 +211,11 @@
 
     <!-- Filled in once a record is matched -->
     <div id="detail" hidden>
+      <section class="section" id="cvSec" hidden>
+        <h2>CVs on this email</h2>
+        <p class="muted" id="cvIntro" style="margin:0 0 8px;font-size:12px"></p>
+        <ul class="cvs" id="cvs"></ul>
+      </section>
       <section class="section">
         <h2>Intake notes</h2>
         <div id="intake"><span class="muted">Loading…</span></div>
@@ -255,7 +269,7 @@
 
 <script>
   // ---------- Config ----------
-  var PANEL_VERSION = "1.8 (intake notes via description field)";
+  var PANEL_VERSION = "1.9 (add CV to Loxo)";
   var LOXO_WEB = "https://pod2.app.loxo.co/agencies/40202";
 
   // From TomTom: Hedgerway's Loxo tag fields
@@ -425,7 +439,8 @@
         if (r.status === 404 || r.status === 405) throw { kind: "worker-old", message: "The Worker is out of date. Paste the latest worker.js into Cloudflare." };
         if (r.status === 409) throw { kind: "changed", message: "Someone changed this in Loxo since you opened it." };
         if (r.status === 429) throw { kind: "http", message: "Loxo is busy. Wait a few seconds and try again." };
-        throw { kind: "http", message: (t && t.length < 120 ? t : "Loxo returned an error (" + r.status + ")") + "." };
+        var detail = ""; try { var j = JSON.parse(t); detail = j.detail || ""; } catch (e) { detail = t && t.length < 120 ? t : ""; }
+        throw { kind: "http", message: (detail || "Loxo returned an error (" + r.status + ")") + "." };
       });
     }, function () { throw { kind: "network", message: "Couldn't reach the Worker." }; });
   }
@@ -842,6 +857,59 @@
     renderIntakeRead();
   }
 
+  // ---------- CVs on this email → Loxo resumes (file only, nothing parsed) ----------
+  var CV_MAX = 10 * 1024 * 1024;
+  var cvAdded = {};   // "personId|attachment name|size" -> true, for this session
+
+  function cvAttachments() {
+    var item = Office.context.mailbox.item;
+    return [].concat((item && item.attachments) || []).filter(function (a) {
+      var isFile = !a.attachmentType || String(a.attachmentType).toLowerCase() === "file";
+      return isFile && !a.isInline && /\.(pdf|docx?)$/i.test(a.name || "");
+    });
+  }
+  function fmtSize(b) { return b >= 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB"; }
+
+  function renderCvs(personId, personName, token) {
+    var atts = cvAttachments();
+    $("cvSec").hidden = !atts.length;
+    if (!atts.length) return;
+    var canRead = Office.context.requirements.isSetSupported("Mailbox", "1.8") && !!Office.context.mailbox.item.getAttachmentContentAsync;
+    $("cvIntro").textContent = canRead
+      ? "Adds the file to " + (personName || "this person") + "'s CVs in Loxo, as it is."
+      : "This version of Outlook can't pass attachments to the panel. Add the CV in Loxo instead.";
+    $("cvs").innerHTML = atts.map(function (a, i) {
+      var key = personId + "|" + a.name + "|" + a.size;
+      var tooBig = a.size > CV_MAX;
+      return '<li><div class="cv-name">' + esc(a.name) + "<small>" + esc(fmtSize(a.size)) + (tooBig ? " – over the 10 MB limit" : "") + "</small>" +
+        '<div class="cv-msg" id="cvMsg' + i + '" role="status"></div></div>' +
+        (cvAdded[key] ? '<span class="done">Added to Loxo</span>'
+          : '<button class="secondary" type="button" data-cv="' + i + '"' + (!canRead || tooBig ? " disabled" : "") + ">Add to Loxo</button>") + "</li>";
+    }).join("");
+    $("cvs").querySelectorAll("button[data-cv]").forEach(function (btn) {
+      btn.onclick = function () {
+        var i = parseInt(btn.getAttribute("data-cv"), 10), a = atts[i], msg = $("cvMsg" + i);
+        var key = personId + "|" + a.name + "|" + a.size;
+        btn.disabled = true; btn.textContent = "Adding…"; msg.textContent = ""; msg.className = "cv-msg";
+        function fail(text) {
+          if (token !== current.token) return;
+          btn.disabled = false; btn.textContent = "Add to Loxo";
+          msg.className = "cv-msg msg err"; msg.textContent = "Not added. " + text;
+        }
+        Office.context.mailbox.item.getAttachmentContentAsync(a.id, function (res) {
+          if (res.status !== Office.AsyncResultStatus.Succeeded) { fail("Outlook couldn't read the attachment."); return; }
+          var c = res.value || {};
+          if (String(c.format).toLowerCase() !== "base64" || !c.content) { fail("Outlook didn't provide the file contents."); return; }
+          loxoWrite("POST", "/people/" + personId + "/resumes", { filename: a.name, content_base64: c.content }).then(function () {
+            cvAdded[key] = true;
+            if (token !== current.token) return;
+            btn.outerHTML = '<span class="done">Added to Loxo</span>';
+          }, function (err) { fail(err.message || "Loxo returned an error."); });
+        });
+      };
+    });
+  }
+
   // ---------- Log a call or note ----------
   var drafts = {};   // person id -> unsaved text, kept while you click between emails
   function setupLogForm(id, token) {
@@ -934,6 +1002,7 @@
       setPrimary("Open in Loxo", function () { openRecord(s.id, s.name); });
       current.personId = id;
       $("detail").hidden = false;
+      renderCvs(id, s.name, token);
       setupLogForm(id, token);
       renderJobs(p);
       renderTags(p);
@@ -1079,7 +1148,7 @@
   function showPerson(person, note) {
     var me = (Office.context.mailbox.userProfile.emailAddress || "").toLowerCase();
     var token = current.token = {};
-    $("detail").hidden = true; $("jobsSec").hidden = true; $("tagsSec").hidden = true;
+    $("detail").hidden = true; $("jobsSec").hidden = true; $("tagsSec").hidden = true; $("cvSec").hidden = true;
 
     current.email = person.email;
     current.name = person.displayName && person.displayName.indexOf("@") === -1 ? person.displayName : "";
