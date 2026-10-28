@@ -143,7 +143,7 @@
 <script>
   // ---------- Config ----------
   // Web link for a record in Loxo. If "Open in Loxo" lands on the wrong page, this is the line to change.
-  var LOXO_WEB = "https://app.loxo.co/hedgerway";
+  var LOXO_WEB = "https://pod2.app.loxo.co/agencies/40202";
 
   var PERSONAL_DOMAINS = [
     "gmail.com","googlemail.com","hotmail.com","hotmail.co.uk","outlook.com","live.com","live.co.uk",
@@ -282,7 +282,10 @@
     } catch (e) {}
     window.open(url, "_blank", "noopener");
   }
-  function openRecord(id) { openUrl(LOXO_WEB + "/people/" + id); }
+  function openRecord(id, name) {
+    var q = name || current.name || current.email;
+    openUrl(LOXO_WEB + "/people?query=" + encodeURIComponent(q) + "&person_id=" + encodeURIComponent(id));
+  }
   function searchLoxo() { openUrl(LOXO_WEB + "/people?query=" + encodeURIComponent(current.name || current.email)); }
 
   function recordHtml(s) {
@@ -298,13 +301,13 @@
     var box = $("loxo");
     if (res.status === "match") {
       box.innerHTML = recordHtml(res.person);
-      setPrimary("Open in Loxo", function () { openRecord(res.person.id); });
+      setPrimary("Open in Loxo", function () { openRecord(res.person.id, res.person.name); });
     } else if (res.status === "possible") {
       box.innerHTML = "<p>No record has this exact email address.</p><p>Similar records:</p>" +
         '<ul class="possible">' + res.people.map(function (s) {
-          return '<li><button type="button" data-id="' + esc(s.id) + '">' + esc(s.name) + "<small>" + esc(s.role || s.type) + "</small></button></li>";
+          return '<li><button type="button" data-id="' + esc(s.id) + '" data-name="' + esc(s.name) + '">' + esc(s.name) + "<small>" + esc(s.role || s.type) + "</small></button></li>";
         }).join("") + "</ul>";
-      box.querySelectorAll("button[data-id]").forEach(function (b) { b.onclick = function () { openRecord(b.getAttribute("data-id")); }; });
+      box.querySelectorAll("button[data-id]").forEach(function (b) { b.onclick = function () { openRecord(b.getAttribute("data-id"), b.getAttribute("data-name")); }; });
       setPrimary("Search Loxo for " + (current.name || "this person"), searchLoxo);
     } else if (res.status === "none") {
       box.innerHTML = "<p>Not in Loxo under this email address.</p><p>They may be saved with a different address.</p>";
