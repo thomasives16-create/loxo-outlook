@@ -247,10 +247,6 @@
   <details class="checks" id="checks">
     <summary>Install check</summary>
     <dl id="checkList"></dl>
-    <div id="diagWrap" hidden style="margin-top:10px">
-      <button class="inline-link" type="button" id="diagBtn" style="margin-top:0">Run intake notes check</button>
-      <div id="diagOut" style="margin-top:6px"></div>
-    </div>
     <div id="rawWrap" hidden>
       <p style="margin:12px 0 4px">Last Loxo response (for fixing field names)</p>
       <pre id="raw"></pre>
@@ -259,7 +255,7 @@
 
 <script>
   // ---------- Config ----------
-  var PANEL_VERSION = "1.7 (tag editing, activity scroll)";
+  var PANEL_VERSION = "1.8 (intake notes via description field)";
   var LOXO_WEB = "https://pod2.app.loxo.co/agencies/40202";
 
   // From TomTom: Hedgerway's Loxo tag fields
@@ -293,7 +289,6 @@
   };
   var EMAIL_TYPES = [116393, 116387, 116394];
 
-  var INTAKE_QUERY = "query person($id: Int!) { person(id: $id) { note { id: _id body } } }";
 
   var PERSONAL_DOMAINS = [
     "gmail.com","googlemail.com","hotmail.com","hotmail.co.uk","outlook.com","live.com","live.co.uk",
@@ -428,25 +423,11 @@
       return r.text().then(function (t) {
         if (r.status === 401) throw { kind: "auth", message: "Loxo rejected the API key." };
         if (r.status === 404 || r.status === 405) throw { kind: "worker-old", message: "The Worker is out of date. Paste the latest worker.js into Cloudflare." };
+        if (r.status === 409) throw { kind: "changed", message: "Someone changed this in Loxo since you opened it." };
         if (r.status === 429) throw { kind: "http", message: "Loxo is busy. Wait a few seconds and try again." };
         throw { kind: "http", message: (t && t.length < 120 ? t : "Loxo returned an error (" + r.status + ")") + "." };
       });
     }, function () { throw { kind: "network", message: "Couldn't reach the Worker." }; });
-  }
-
-  function loxoGraphQL(query, variables) {
-    return fetch(workerBase() + "/graphql", {
-      method: "POST",
-      headers: { Authorization: authHeader(), "Content-Type": "application/json" },
-      body: JSON.stringify({ query: query, variables: JSON.stringify(variables) })
-    }).then(function (r) {
-      return r.text().then(function (t) {
-        var j = null; try { j = JSON.parse(t); } catch (e) {}
-        if (!r.ok) throw { kind: "gql", status: r.status, detail: j || t };
-        if (j && j.errors && j.errors.length) throw { kind: "gql", status: r.status, detail: j.errors.map(function (e) { return e.message; }).join(", ") };
-        return j;
-      });
-    }, function () { throw { kind: "network" }; });
   }
 
   function loadUsers() {
@@ -767,9 +748,9 @@
     return doc.body.innerHTML;
   }
 
-  // ---------- Intake notes: read and edit (TomTom's format and freshness check) ----------
-  var NOTE_UPDATE = "mutation updateNote($noteInput: NoteInputType!) { updateNote(noteInput: $noteInput) { id: _id } }";
-  var intake = { personId: null, noteId: null, body: "" };
+  // ---------- Intake notes: Loxo's "description" field (GraphQL rejects API keys) ----------
+  var intake = { personId: null, body: "" };
+  function looksHtml(t) { return /<[a-z][\s\S]*>/i.test(t || ""); }
 
   function intakeHtmlToText(html) {
     var doc = new DOMParser().parseFromString(html || "", "text/html"), lines = [];
@@ -779,27 +760,14 @@
     });
     return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
   }
-  function intakeTextToHtml(text) {
-    var style = "font-family: Arial; margin: 0px;";
-    return (text || "").split("\n").map(function (line) {
-      var safe = line.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      return '<p style="' + style + '">' + (safe || "<br>") + "</p>";
-    }).join("");
-  }
-  function readNote(id) {
-    return loxoGraphQL(INTAKE_QUERY, { id: id }).then(function (j) {
-      // Loxo answers "person: null" when it won't serve this record to an API key –
-      // that is NOT the same as the person having no notes.
-      if (!j || !j.data || !j.data.person) throw { kind: "noperson" };
-      return j.data.person.note || null;
-    });
-  }
+  function intakeAsText(body) { return looksHtml(body) ? intakeHtmlToText(body) : String(body || "").trim(); }
 
   function renderIntakeRead(msg) {
     var box = $("intake");
-    var has = intake.body.replace(/<[^>]*>/g, "").trim();
-    box.innerHTML = (has ? '<div class="intake" id="intakeBody">' + sanitiseHtml(intake.body) + "</div>"
-                         : '<span class="muted">No intake notes yet.' + (intake.noteId ? "" : " Create the first one in Loxo.") + "</span>") +
+    var has = intakeAsText(intake.body);
+    box.innerHTML = (has ? '<div class="intake" id="intakeBody"' + (looksHtml(intake.body) ? "" : ' style="white-space:pre-wrap"') + ">" +
+                           (looksHtml(intake.body) ? sanitiseHtml(intake.body) : esc(intake.body)) + "</div>"
+                         : '<span class="muted">No intake notes yet.</span>') +
       '<div class="actions" id="intakeActions"></div><div class="msg" id="intakeMsg" role="status"></div>';
     var actions = $("intakeActions");
     var el = $("intakeBody");
@@ -810,12 +778,11 @@
       more.onclick = function () { more.textContent = el.classList.toggle("clamped") ? "Show all" : "Show less"; };
       actions.appendChild(more);
     }
-    if (intake.noteId) {
-      var edit = document.createElement("button");
-      edit.className = "inline-link"; edit.type = "button"; edit.textContent = "Edit intake notes"; edit.style.marginTop = "0";
-      edit.onclick = renderIntakeEdit;
-      actions.appendChild(edit);
-    }
+    var edit = document.createElement("button");
+    edit.className = "inline-link"; edit.type = "button"; edit.style.marginTop = "0";
+    edit.textContent = has ? "Edit intake notes" : "Add intake notes";
+    edit.onclick = renderIntakeEdit;
+    actions.appendChild(edit);
     if (msg) { $("intakeMsg").className = "msg " + msg[0]; $("intakeMsg").textContent = msg[1]; }
   }
 
@@ -823,12 +790,12 @@
     var box = $("intake");
     box.innerHTML = '<label class="lbl" for="intakeText">Intake notes</label>' +
       '<textarea class="field" id="intakeText" style="min-height:180px"></textarea>' +
-      '<div class="lbl" style="margin-top:4px">Bold, bullets and other formatting are removed when you save.</div>' +
+      (looksHtml(intake.body) ? '<div class="lbl" style="margin-top:4px">Bold, bullets and other formatting are removed when you save.</div>' : "") +
       '<div class="actions"><button class="secondary" type="button" id="intakeSave">Save intake notes</button>' +
       '<button class="inline-link" type="button" id="intakeCancel" style="margin-top:0">Cancel</button></div>' +
       '<div class="msg" id="intakeMsg" role="status"></div>';
     var ta = $("intakeText");
-    ta.value = intakeHtmlToText(intake.body);
+    ta.value = intakeAsText(intake.body);
     ta.focus();
     $("intakeCancel").onclick = function () { renderIntakeRead(); };
     $("intakeSave").onclick = function () { saveIntake(ta.value); };
@@ -836,19 +803,15 @@
 
   function saveIntake(text) {
     var btn = $("intakeSave"), msg = $("intakeMsg");
-    var personId = intake.personId, noteId = intake.noteId, loadedBody = intake.body, token = current.token;
-    if (intakeHtmlToText(loadedBody) === text.trim()) { renderIntakeRead(); return; }
+    var personId = intake.personId, loadedBody = intake.body, token = current.token;
+    if (intakeAsText(loadedBody) === text.trim()) { renderIntakeRead(); return; }
     btn.disabled = true; btn.textContent = "Saving…";
-    readNote(personId).then(function (fresh) {
-      if ((fresh && fresh.body || "") !== loadedBody) throw { kind: "changed" };
-      var newBody = intakeTextToHtml(text.trim());
-      return loxoGraphQL(NOTE_UPDATE, { noteInput: { id: noteId, body: newBody, personId: personId } }).then(function (res) {
-        if (!(res && res.data && res.data.updateNote && res.data.updateNote.id)) throw { kind: "http", detail: "Unexpected response from Loxo" };
-        return newBody;
-      });
-    }).then(function (newBody) {
+    // The Worker re-reads Loxo and refuses to save if the notes changed since we loaded them
+    loxoWrite("PUT", "/people/" + personId + "/notes", { expected: loadedBody, text: text }).then(function (res) {
+      var saved = typeof res.description === "string" ? res.description : text.trim();
+      if (recordCache[personId]) recordCache[personId].description = saved;
       if (token !== current.token || intake.personId !== personId) return;
-      intake.body = newBody;
+      intake.body = saved;
       renderIntakeRead(["ok", "Intake notes saved."]);
     }, function (err) {
       if (token !== current.token) return;
@@ -857,33 +820,26 @@
       if (err.kind === "changed") {
         msg.innerHTML = "Not saved. Someone changed these notes in Loxo since you opened them. " +
           '<button class="inline-link" type="button" id="intakeReload" style="margin-top:0">Copy your text, then reload</button>';
-        $("intakeReload").onclick = function () { loadIntake(personId, token); };
+        $("intakeReload").onclick = function () {
+          delete recordCache[personId];
+          getRecord(personId).then(function () { if (token === current.token) loadIntake(personId, token); });
+        };
       } else {
-        msg.textContent = "Not saved. " + (err.kind === "network" ? "Couldn't reach the Worker." :
-          err.status === 400 || err.status === 403 || err.status === 404 || err.status === 405 ? "The Worker is out of date. Paste the latest worker.js into Cloudflare." :
-          (typeof err.detail === "string" ? err.detail.slice(0, 140) : "Loxo returned an error."));
+        msg.textContent = "Not saved. " + (err.message || "Loxo returned an error.");
       }
     });
   }
 
   function loadIntake(id, token) {
-    var box = $("intake");
-    box.innerHTML = '<span class="muted">Loading…</span>';
-    readNote(id).then(function (note) {
-      if (token !== current.token) return;
-      setCheck("Intake notes", "Working");
-      intake = { personId: id, noteId: note && note.id || null, body: note && note.body || "" };
-      renderIntakeRead();
-    }, function (err) {
-      if (token !== current.token) return;
-      var why = err.kind === "network" ? "Couldn't reach the Worker." :
-                err.status === 404 || err.status === 405 ? "The Worker is out of date." :
-                "Loxo isn't sharing intake notes with the API key.";
-      setCheck("Intake notes", "Not available – " + (err.kind === "noperson" ? "Loxo returned no person for the API key" :
-               typeof err.detail === "string" ? err.detail.slice(0, 120) : (err.status || err.kind)));
-      box.innerHTML = '<p class="muted" style="margin:0">' + esc(why) + " Open the record in Loxo to see them.</p>";
-      $("diagWrap").hidden = false;
-    });
+    var p = recordCache[id] || {};
+    if (!("description" in p)) {
+      setCheck("Intake notes", "Worker out of date");
+      $("intake").innerHTML = '<p class="muted" style="margin:0">The Worker needs updating to show intake notes. Paste the latest worker.js into Cloudflare.</p>';
+      return;
+    }
+    setCheck("Intake notes", "Working (description field)");
+    intake = { personId: id, body: p.description || "" };
+    renderIntakeRead();
   }
 
   // ---------- Log a call or note ----------
@@ -1182,24 +1138,6 @@
     checkEls[label].textContent = value;
   }
 
-  function runDiag() {
-    var out = $("diagOut");
-    if (!current.personId) { out.textContent = "Open an email from someone who's in Loxo first."; return; }
-    out.textContent = "Checking…";
-    loxoGet("/people/" + current.personId + "/note-check").then(function (r) {
-      var g = r.graphql || {};
-      var lines = [
-        "GraphQL answered: HTTP " + g.status + (g.json ? "" : " (not JSON" + (g.text_start ? ': "' + g.text_start + '"' : "") + ")"),
-        "Person returned: " + g.person + ", note: " + g.note,
-        g.errors && g.errors.length ? "Loxo said: " + g.errors.join(" / ") : "Loxo errors: none",
-        "Note-like fields on the record: " + ((r.rest_fields || []).map(function (f) { return f.field + " (" + f.type + ", " + f.length + " chars)"; }).join(", ") || "none")
-      ];
-      out.innerHTML = "<pre>" + esc(lines.join("\n")) + "</pre><p style='margin:4px 0 0'>Screenshot this and send it over. It contains no note text.</p>";
-    }, function (err) {
-      out.textContent = err.kind === "worker-old" ? "The Worker needs updating first (version 5)." : "Check failed: " + (err.kind || "error");
-    });
-  }
-
   // ---------- Wiring ----------
   $("settingsBtn").addEventListener("click", showSettings);
   $("cancelSettings").addEventListener("click", function () { if (window.Office && Office.context && Office.context.mailbox) render(); });
@@ -1216,7 +1154,6 @@
   $("workerUrl").addEventListener("input", function () { this.setCustomValidity(""); });
   $("primaryBtn").addEventListener("click", function () { if (primaryAction) primaryAction(); });
   $("copyBtn").addEventListener("click", copyEmail);
-  $("diagBtn").addEventListener("click", runDiag);
 
   var officeTimer = setTimeout(function () {
     showEmpty("Hosting works", "This page loaded correctly. Open it from the Loxo Lookup button in Outlook to see sender details.");
