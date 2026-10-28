@@ -13,10 +13,11 @@
       --red: #ED1C24;
       --navy: #293C5B;
       --charcoal: #2B2B2B;
-      --grey: #8C8D8E;
+      --grey: #6F7072;
       --line: #E3E5E9;
       --wash: #F5F6F8;
       --bg: #FFFFFF;
+      --ok: #1E7B4F;
       --font: "Cabin", "Segoe UI", system-ui, -apple-system, sans-serif;
     }
     @media (prefers-color-scheme: dark) {
@@ -25,8 +26,9 @@
         --charcoal: #E6E6E6;
         --grey: #A0A2A4;
         --line: #3A3F47;
-        --wash: #23272E;
+        --wash: #262A31;
         --bg: #1B1E23;
+        --ok: #6FCF97;
       }
     }
     * { box-sizing: border-box; }
@@ -36,13 +38,14 @@
     .brand { display: flex; align-items: baseline; gap: 8px; margin-bottom: 22px; }
     .brand strong { font-weight: 700; color: var(--navy); font-size: 13px; letter-spacing: 0.02em; }
     .brand span { color: var(--grey); font-size: 12px; }
+    .brand button { margin-left: auto; }
 
     .who h1 { margin: 0; font-size: 22px; font-weight: 700; line-height: 1.2; color: var(--navy); overflow-wrap: anywhere; }
     .who .email { margin-top: 4px; font-size: 14px; overflow-wrap: anywhere; }
     .who .note { margin-top: 6px; font-size: 12px; color: var(--grey); }
 
     .kind { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 3px 9px;
-            border: 1px solid var(--line); border-radius: 999px; font-size: 12px; color: var(--charcoal); }
+            border: 1px solid var(--line); border-radius: 999px; font-size: 12px; }
     .kind svg { width: 12px; height: 12px; flex: none; }
 
     h2 { margin: 26px 0 10px; font-size: 14px; font-weight: 700; color: var(--navy);
@@ -52,27 +55,62 @@
     .loxo p { margin: 0; }
     .loxo p + p { margin-top: 6px; color: var(--grey); }
 
+    .rec-type { font-size: 12px; font-weight: 600; color: var(--ok); margin-bottom: 4px; }
+    .rec-name { font-size: 16px; font-weight: 700; color: var(--charcoal); }
+    .rec-role { margin-top: 2px; }
+    dl.facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 10px 0 0; font-size: 12px; }
+    dl.facts dt { color: var(--grey); }
+    dl.facts dd { margin: 0; overflow-wrap: anywhere; }
+
+    .possible { list-style: none; margin: 8px 0 0; padding: 0; }
+    .possible li + li { margin-top: 6px; }
+    .possible button { all: unset; box-sizing: border-box; cursor: pointer; display: block; width: 100%; padding: 8px 10px;
+                       border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
+    .possible button:hover { border-color: var(--navy); }
+    .possible small { display: block; color: var(--grey); }
+
     .primary { display: block; width: 100%; margin-top: 18px; padding: 10px 14px; border: 0; border-radius: 6px;
                background: var(--navy); color: var(--bg); font: 600 14px var(--font); cursor: pointer; }
     .primary:hover { filter: brightness(1.12); }
-    .primary:focus-visible, summary:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+    .link { all: unset; box-sizing: border-box; cursor: pointer; display: block; width: 100%; margin-top: 10px; text-align: center;
+            font-size: 13px; color: var(--navy); text-decoration: underline; text-underline-offset: 2px; }
+    .icon-btn { all: unset; cursor: pointer; font-size: 12px; color: var(--grey); text-decoration: underline; text-underline-offset: 2px; }
+    button:focus-visible, summary:focus-visible, input:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+
+    form.settings label { display: block; font-size: 12px; font-weight: 600; margin: 14px 0 4px; }
+    form.settings input { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px;
+                          background: var(--bg); color: var(--charcoal); font: 13px var(--font); }
+    form.settings .hint { font-size: 12px; color: var(--grey); margin-top: 4px; }
 
     details { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 10px; font-size: 12px; color: var(--grey); }
     summary { cursor: pointer; }
-    dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 10px 0 0; }
-    dt { color: var(--grey); }
-    dd { margin: 0; color: var(--charcoal); overflow-wrap: anywhere; }
+    details dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 10px 0 0; }
+    details dd { margin: 0; color: var(--charcoal); overflow-wrap: anywhere; }
+    pre { white-space: pre-wrap; word-break: break-all; font-size: 11px; max-height: 260px; overflow: auto;
+          background: var(--wash); color: var(--charcoal); padding: 8px; border-radius: 6px; }
 
-    .empty { padding-top: 8px; }
     .empty h1 { font-size: 18px; color: var(--navy); margin: 0 0 6px; }
     .empty p { margin: 0; color: var(--grey); }
     [hidden] { display: none !important; }
   </style>
 </head>
 <body>
-  <div class="brand"><strong>Loxo Lookup</strong><span>Hedgerway</span></div>
+  <div class="brand"><strong>Loxo Lookup</strong><span>Hedgerway</span>
+    <button class="icon-btn" id="settingsBtn" type="button">Settings</button></div>
 
-  <!-- Shown when there's an email to read -->
+  <!-- Settings -->
+  <form class="settings" id="settings" hidden>
+    <h2 style="margin-top:0">Settings</h2>
+    <label for="workerUrl">Worker address</label>
+    <input id="workerUrl" type="url" placeholder="https://loxo-lookup.yourname.workers.dev" autocomplete="off" required>
+    <label for="apiKey">Your Loxo API key</label>
+    <input id="apiKey" type="password" placeholder="Paste your key" autocomplete="off" required>
+    <div class="hint">Saved on this computer only. It's sent to Loxo via the Worker and isn't stored anywhere else.</div>
+    <button class="primary" type="submit">Save settings</button>
+    <button class="link" type="button" id="cancelSettings">Cancel</button>
+  </form>
+
+  <!-- Main view -->
   <main id="view" hidden>
     <section class="who">
       <h1 id="name"></h1>
@@ -82,12 +120,12 @@
     </section>
 
     <h2>Loxo</h2>
-    <div class="loxo" id="loxo"></div>
+    <div class="loxo" id="loxo" aria-live="polite"></div>
 
-    <button class="primary" id="copyBtn" type="button">Copy email address</button>
+    <button class="primary" id="primaryBtn" type="button" hidden></button>
+    <button class="link" id="copyBtn" type="button">Copy email address</button>
   </main>
 
-  <!-- Shown when nothing usable is selected, or when opened outside Outlook -->
   <section class="empty" id="empty" hidden>
     <h1 id="emptyTitle"></h1>
     <p id="emptyText"></p>
@@ -96,16 +134,22 @@
   <details id="checks">
     <summary>Install check</summary>
     <dl id="checkList"></dl>
+    <div id="rawWrap" hidden>
+      <p style="margin:12px 0 4px">Last Loxo response (for fixing field names)</p>
+      <pre id="raw"></pre>
+    </div>
   </details>
 
 <script>
-  // Webmail domains: a match here means the sender used a personal address.
+  // ---------- Config ----------
+  // Web link for a record in Loxo. If "Open in Loxo" lands on the wrong page, this is the line to change.
+  var LOXO_WEB = "https://app.loxo.co/hedgerway";
+
   var PERSONAL_DOMAINS = [
     "gmail.com","googlemail.com","hotmail.com","hotmail.co.uk","outlook.com","live.com","live.co.uk",
     "msn.com","icloud.com","me.com","mac.com","yahoo.com","yahoo.co.uk","aol.com","btinternet.com",
     "sky.com","virginmedia.com","protonmail.com","proton.me","talktalk.net"
   ];
-
   var ICONS = {
     internal: '<svg viewBox="0 0 12 12" aria-hidden="true"><rect x="1.5" y="1.5" width="9" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>',
     personal: '<svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="4" r="2.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M1.8 11c.6-2.2 2.2-3.3 4.2-3.3s3.6 1.1 4.2 3.3" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>',
@@ -113,109 +157,244 @@
   };
 
   var $ = function (id) { return document.getElementById(id); };
-  var currentEmail = "";
+  var current = { email: "", name: "", kind: "" };
+  var cache = {};          // email -> lookup result, for this session
+  var primaryAction = null;
 
-  function domainOf(address) {
-    var at = (address || "").lastIndexOf("@");
-    return at === -1 ? "" : address.slice(at + 1).toLowerCase();
-  }
+  // ---------- Settings storage (this computer only) ----------
+  function getSetting(k) { try { return localStorage.getItem("loxoLookup." + k) || ""; } catch (e) { return ""; } }
+  function setSetting(k, v) { try { localStorage.setItem("loxoLookup." + k, v); return true; } catch (e) { return false; } }
+  function isConfigured() { return !!(getSetting("workerUrl") && getSetting("apiKey")); }
 
+  // ---------- Helpers ----------
+  function esc(s) { var d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
+  function domainOf(a) { var i = (a || "").lastIndexOf("@"); return i === -1 ? "" : a.slice(i + 1).toLowerCase(); }
   function classify(address, ownDomain) {
     var d = domainOf(address);
     if (d && d === ownDomain) return { type: "internal", label: "Internal – a colleague" };
     if (PERSONAL_DOMAINS.indexOf(d) !== -1) return { type: "personal", label: "Personal address" };
     return { type: "work", label: "Work address at " + d };
   }
-
-  // STEP 2 GOES HERE. Will call your own backend (never Loxo directly – the API key
-  // must not live in this file, which anyone with the add-in can read).
-  function lookupInLoxo(email) {
-    return Promise.resolve({ status: "not-connected" });
+  function fmtDate(v) {
+    if (!v) return "";
+    var d = new Date(v); if (isNaN(d)) return String(v);
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  }
+  function pick(obj, paths) {
+    for (var i = 0; i < paths.length; i++) {
+      var v = paths[i].split(".").reduce(function (o, k) { return o == null ? o : o[k]; }, obj);
+      if (v != null && v !== "") return v;
+    }
+    return "";
   }
 
-  function renderLoxo(result, kind) {
+  // ---------- Reading a Loxo person defensively (field names unconfirmed) ----------
+  function personEmails(p) {
+    var out = [];
+    (p.emails || p.email_addresses || []).forEach(function (e) {
+      var v = typeof e === "string" ? e : (e.value || e.email || e.address);
+      if (v) out.push(String(v).toLowerCase().trim());
+    });
+    if (typeof p.email === "string") out.push(p.email.toLowerCase().trim());
+    return out;
+  }
+  function personType(p) {
+    var raw = p.person_types || p.person_type || p.types || p.type || "";
+    var names = [].concat(raw).map(function (t) { return typeof t === "string" ? t : (t && (t.name || t.label)) || ""; }).join(" ").toLowerCase();
+    if (/contact|client|hiring/.test(names)) return /candidate/.test(names) ? "Candidate and contact" : "Contact";
+    if (/candidate/.test(names)) return "Candidate";
+    return "Loxo record";
+  }
+  function personSummary(p) {
+    var company = pick(p, ["current_company", "company.name", "company_name", "current_company_name"]);
+    var title = pick(p, ["current_title", "title", "job_title"]);
+    return {
+      id: p.id,
+      name: pick(p, ["name"]) || [p.first_name, p.last_name].filter(Boolean).join(" "),
+      title: title, company: company,
+      role: title && company ? title + " at " + company : (title || company),
+      type: personType(p),
+      location: pick(p, ["location", "city"]),
+      status: pick(p, ["person_global_status.name", "candidate_status.name", "status.name", "status"]),
+      owner: pick(p, ["owned_by.name", "owner.name", "created_by.name"]),
+      updated: fmtDate(pick(p, ["updated_at", "last_activity_at"])),
+      emails: personEmails(p)
+    };
+  }
+  function listFrom(json) {
+    if (Array.isArray(json)) return json;
+    return json.people || json.results || json.data || [];
+  }
+
+  // ---------- Loxo via the Worker ----------
+  function loxoGet(path) {
+    var base = getSetting("workerUrl").replace(/\/+$/, "");
+    return fetch(base + path, { headers: { Authorization: "Bearer " + getSetting("apiKey") } })
+      .then(function (r) {
+        if (r.status === 401) throw { kind: "auth" };
+        if (r.status === 403) throw { kind: "origin" };
+        if (!r.ok) throw { kind: "http", status: r.status };
+        return r.json();
+      }, function () { throw { kind: "network" }; });
+  }
+
+  function lookupInLoxo(email) {
+    if (cache[email]) return Promise.resolve(cache[email]);
+    var target = email.toLowerCase();
+    var queries = ['"' + email + '"', email];     // tried in order until an exact email match
+    var lastPeople = [];
+
+    function attempt(i) {
+      if (i >= queries.length) {
+        return { status: lastPeople.length ? "possible" : "none", people: lastPeople.slice(0, 3).map(personSummary) };
+      }
+      return loxoGet("/people?per_page=10&query=" + encodeURIComponent(queries[i])).then(function (json) {
+        showRaw(json);
+        var people = listFrom(json);
+        if (!people.length) return attempt(i + 1);
+        lastPeople = people;
+        var hit = people.find(function (p) { return personEmails(p).indexOf(target) !== -1; });
+        if (hit) return { status: "match", person: personSummary(hit) };
+        // Search results may not include emails – check the full records of the top few
+        var top = people.filter(function (p) { return !personEmails(p).length; }).slice(0, 5);
+        if (!top.length) return attempt(i + 1);
+        return Promise.all(top.map(function (p) {
+          return loxoGet("/people/" + p.id).then(function (j) { return j.person || j; }, function () { return null; });
+        })).then(function (full) {
+          var exact = full.filter(Boolean).find(function (p) { return personEmails(p).indexOf(target) !== -1; });
+          if (exact) { showRaw(exact); return { status: "match", person: personSummary(exact) }; }
+          return attempt(i + 1);
+        });
+      });
+    }
+    return attempt(0).then(function (res) { cache[email] = res; return res; });
+  }
+
+  // ---------- Rendering ----------
+  function setPrimary(label, fn) {
+    var b = $("primaryBtn");
+    if (!label) { b.hidden = true; primaryAction = null; return; }
+    b.hidden = false; b.textContent = label; primaryAction = fn;
+  }
+  function openUrl(url) {
+    try {
+      if (Office.context.ui && Office.context.ui.openBrowserWindow) { Office.context.ui.openBrowserWindow(url); return; }
+    } catch (e) {}
+    window.open(url, "_blank", "noopener");
+  }
+  function openRecord(id) { openUrl(LOXO_WEB + "/people/" + id); }
+  function searchLoxo() { openUrl(LOXO_WEB + "/people?query=" + encodeURIComponent(current.name || current.email)); }
+
+  function recordHtml(s) {
+    var facts = [["Status", s.status], ["Location", s.location], ["Owner", s.owner], ["Updated", s.updated],
+                 ["Emails", s.emails.join(", ")]].filter(function (f) { return f[1]; });
+    return '<div class="rec-type">' + esc(s.type) + ' in Loxo</div>' +
+      '<div class="rec-name">' + esc(s.name) + '</div>' +
+      (s.role ? '<div class="rec-role">' + esc(s.role) + '</div>' : "") +
+      (facts.length ? '<dl class="facts">' + facts.map(function (f) { return "<dt>" + esc(f[0]) + "</dt><dd>" + esc(f[1]) + "</dd>"; }).join("") + "</dl>" : "");
+  }
+
+  function renderLoxo(res) {
     var box = $("loxo");
-    if (kind === "internal") {
-      box.innerHTML = "<p>Internal emails are skipped.</p>";
-      return;
+    if (res.status === "match") {
+      box.innerHTML = recordHtml(res.person);
+      setPrimary("Open in Loxo", function () { openRecord(res.person.id); });
+    } else if (res.status === "possible") {
+      box.innerHTML = "<p>No record has this exact email address.</p><p>Similar records:</p>" +
+        '<ul class="possible">' + res.people.map(function (s) {
+          return '<li><button type="button" data-id="' + esc(s.id) + '">' + esc(s.name) + "<small>" + esc(s.role || s.type) + "</small></button></li>";
+        }).join("") + "</ul>";
+      box.querySelectorAll("button[data-id]").forEach(function (b) { b.onclick = function () { openRecord(b.getAttribute("data-id")); }; });
+      setPrimary("Search Loxo for " + (current.name || "this person"), searchLoxo);
+    } else if (res.status === "none") {
+      box.innerHTML = "<p>Not in Loxo under this email address.</p><p>They may be saved with a different address.</p>";
+      setPrimary("Search Loxo for " + (current.name || "this person"), searchLoxo);
     }
-    if (result.status === "not-connected") {
-      box.innerHTML = "<p>Not connected to Loxo yet.</p><p>The matching candidate or contact record will show here once the lookup is set up.</p>";
-    }
+  }
+
+  function renderError(err) {
+    var box = $("loxo");
+    var msgs = {
+      auth: ["Loxo rejected the API key.", "Check the key in Settings."],
+      origin: ["The Worker refused this request.", "Its allowed address doesn't match where the panel is hosted."],
+      network: ["Can't reach the Worker.", "Check the Worker address in Settings, and your internet connection."],
+      http: ["Loxo returned an error" + (err.status ? " (" + err.status + ")" : "") + ".", "Try again in a moment. If it keeps happening, send a screenshot of Install check."]
+    }[err.kind] || ["Something went wrong.", String(err && err.message || err)];
+    box.innerHTML = "<p>" + esc(msgs[0]) + "</p><p>" + esc(msgs[1]) + "</p>";
+    setPrimary(err.kind === "auth" || err.kind === "network" ? "Open settings" : "Try again",
+      err.kind === "auth" || err.kind === "network" ? showSettings : function () { delete cache[current.email]; render(); });
+  }
+
+  function showRaw(json) {
+    try { $("raw").textContent = JSON.stringify(json, null, 2).slice(0, 6000); $("rawWrap").hidden = false; } catch (e) {}
   }
 
   function showEmpty(title, text) {
-    $("view").hidden = true;
-    $("empty").hidden = false;
-    $("emptyTitle").textContent = title;
-    $("emptyText").textContent = text;
+    $("view").hidden = true; $("settings").hidden = true; $("empty").hidden = false;
+    $("emptyTitle").textContent = title; $("emptyText").textContent = text;
+  }
+
+  function showSettings() {
+    $("view").hidden = true; $("empty").hidden = true; $("settings").hidden = false;
+    $("workerUrl").value = getSetting("workerUrl");
+    $("apiKey").value = getSetting("apiKey");
+    $("cancelSettings").hidden = !isConfigured();
+    $("workerUrl").focus();
   }
 
   function render() {
-    var mailbox = Office.context.mailbox;
-    var item = mailbox.item;
-
+    var mailbox = Office.context.mailbox, item = mailbox.item;
+    $("settings").hidden = true;
     if (!item || item.itemType !== Office.MailboxEnums.ItemType.Message || !item.from) {
       showEmpty("No email selected", "Select an email to see who sent it.");
       return;
     }
-
     var me = (mailbox.userProfile.emailAddress || "").toLowerCase();
-    var ownDomain = domainOf(me);
-    var person = item.from;
-    var note = "";
-
-    // In Sent Items the sender is you, so show who you wrote to instead.
+    var person = item.from, note = "";
     if ((person.emailAddress || "").toLowerCase() === me && item.to && item.to.length) {
       person = item.to[0];
-      note = item.to.length > 1
-        ? "You sent this. Showing the first of " + item.to.length + " recipients."
-        : "You sent this. Showing the recipient.";
+      note = item.to.length > 1 ? "You sent this. Showing the first of " + item.to.length + " recipients." : "You sent this. Showing the recipient.";
     }
+    current.email = (person.emailAddress || "").toLowerCase().trim();
+    current.name = person.displayName && person.displayName.indexOf("@") === -1 ? person.displayName : "";
+    var kind = classify(current.email, domainOf(me));
+    current.kind = kind.type;
 
-    currentEmail = person.emailAddress || "";
-    var kind = classify(currentEmail, ownDomain);
-
-    $("empty").hidden = true;
-    $("view").hidden = false;
-    $("name").textContent = person.displayName || currentEmail;
-    $("email").textContent = currentEmail;
-    $("note").hidden = !note;
-    $("note").textContent = note;
+    $("empty").hidden = true; $("view").hidden = false;
+    $("name").textContent = person.displayName || current.email;
+    $("email").textContent = current.email;
+    $("note").hidden = !note; $("note").textContent = note;
     $("kind").innerHTML = ICONS[kind.type] + "<span></span>";
     $("kind").lastChild.textContent = kind.label;
-
-    var copyBtn = $("copyBtn");
-    copyBtn.textContent = "Copy email address";
+    $("copyBtn").textContent = "Copy email address";
 
     if (kind.type === "internal") {
-      renderLoxo({}, "internal");
-    } else {
-      $("loxo").innerHTML = "<p>Checking Loxo…</p>";
-      var requested = currentEmail;
-      lookupInLoxo(requested).then(function (result) {
-        if (requested === currentEmail) renderLoxo(result, kind.type); // ignore stale replies
-      });
+      $("loxo").innerHTML = "<p>Internal emails are skipped.</p>"; setPrimary(null); return;
     }
+    if (!isConfigured()) {
+      $("loxo").innerHTML = "<p>Not connected to Loxo yet.</p><p>Add the Worker address and your API key to start matching.</p>";
+      setPrimary("Connect to Loxo", showSettings); return;
+    }
+    $("loxo").innerHTML = "<p>Checking Loxo…</p>"; setPrimary(null);
+    var requested = current.email;
+    lookupInLoxo(requested).then(function (res) {
+      if (requested === current.email) renderLoxo(res);       // ignore replies for an email you've moved past
+    }, function (err) {
+      if (requested === current.email) renderError(err);
+    });
   }
 
   function copyEmail() {
     var btn = $("copyBtn");
-    var done = function () {
-      btn.textContent = "Copied";
-      setTimeout(function () { btn.textContent = "Copy email address"; }, 1800);
-    };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(currentEmail).then(done, fallback);
-    } else { fallback(); }
+    var done = function () { btn.textContent = "Copied"; setTimeout(function () { btn.textContent = "Copy email address"; }, 1800); };
     function fallback() {
-      var t = document.createElement("textarea");
-      t.value = currentEmail; t.setAttribute("readonly", "");
-      t.style.position = "fixed"; t.style.opacity = "0";
-      document.body.appendChild(t); t.select();
+      var t = document.createElement("textarea"); t.value = current.email; t.setAttribute("readonly", "");
+      t.style.position = "fixed"; t.style.opacity = "0"; document.body.appendChild(t); t.select();
       try { document.execCommand("copy"); done(); } catch (e) { btn.textContent = "Copy failed – select the address instead"; }
       document.body.removeChild(t);
     }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(current.email).then(done, fallback);
+    else fallback();
   }
 
   function addCheck(label, value) {
@@ -224,7 +403,22 @@
     $("checkList").appendChild(dt); $("checkList").appendChild(dd);
   }
 
-  // Opened in a normal browser (e.g. checking your GitHub Pages link)
+  // ---------- Wiring ----------
+  $("settingsBtn").addEventListener("click", showSettings);
+  $("cancelSettings").addEventListener("click", function () { if (window.Office && Office.context && Office.context.mailbox) render(); });
+  $("settings").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var url = $("workerUrl").value.trim(), key = $("apiKey").value.trim();
+    if (!/^https:\/\//.test(url)) { $("workerUrl").setCustomValidity("Use the full https:// address of the Worker"); $("workerUrl").reportValidity(); return; }
+    $("workerUrl").setCustomValidity("");
+    setSetting("workerUrl", url); setSetting("apiKey", key.replace(/^Bearer\s+/i, ""));
+    cache = {};
+    if (window.Office && Office.context && Office.context.mailbox) render();
+  });
+  $("workerUrl").addEventListener("input", function () { this.setCustomValidity(""); });
+  $("primaryBtn").addEventListener("click", function () { if (primaryAction) primaryAction(); });
+  $("copyBtn").addEventListener("click", copyEmail);
+
   var officeTimer = setTimeout(function () {
     showEmpty("Hosting works", "This page loaded correctly. Open it from the Loxo Lookup button in Outlook to see sender details.");
     addCheck("Running in Outlook", "No – opened in a browser");
@@ -235,22 +429,15 @@
       if (info.host !== Office.HostType.Outlook) return;
       clearTimeout(officeTimer);
       $("checkList").innerHTML = "";
-
       var canPin = Office.context.requirements.isSetSupported("Mailbox", "1.5");
-      var diag = Office.context.diagnostics || {};
       addCheck("Running in Outlook", "Yes");
-      addCheck("Outlook version", (diag.hostName || "Unknown") + " " + (diag.hostVersion || ""));
       addCheck("Pinning supported", canPin ? "Yes" : "No – pane will close between emails");
-
-      $("copyBtn").addEventListener("click", copyEmail);
+      addCheck("Loxo settings", isConfigured() ? "Saved" : "Not set");
       render();
-
       if (canPin) {
         Office.context.mailbox.addHandlerAsync(Office.EventType.ItemChanged, render, function (r) {
           addCheck("Follows selected email", r.status === Office.AsyncResultStatus.Succeeded ? "Yes" : "No – " + r.error.message);
         });
-      } else {
-        addCheck("Follows selected email", "No");
       }
     });
   }
