@@ -57,7 +57,24 @@
 
     .rec-type { font-size: 12px; font-weight: 600; color: var(--ok); margin-bottom: 4px; }
     .rec-name { font-size: 16px; font-weight: 700; color: var(--charcoal); }
-    .rec-role { margin-top: 2px; }
+    .rec-title { margin-top: 2px; }
+    .rec-company { font-weight: 600; }
+    .tabs { display: flex; gap: 4px; margin-top: 16px; border-bottom: 1px solid var(--line); }
+    .tabs button { all: unset; cursor: pointer; padding: 8px 10px; font-size: 13px; font-weight: 600; color: var(--grey);
+                   border-bottom: 3px solid transparent; margin-bottom: -1px; }
+    .tabs button[aria-selected="true"] { color: var(--navy); border-bottom-color: var(--red); }
+    .tabs button:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+    .exp { list-style: none; margin: 0; padding: 0; }
+    .exp li { padding: 10px 0; border-top: 1px solid var(--line); }
+    .exp li:first-child { border-top: 0; padding-top: 0; }
+    .exp-title { font-weight: 600; font-size: 13px; }
+    .exp-co { font-size: 13px; }
+    .exp-dates { font-size: 12px; color: var(--grey); margin-top: 1px; }
+    .exp-now { font-size: 11px; font-weight: 600; border: 1px solid var(--navy); border-radius: 999px; padding: 0 6px; margin-left: 6px; }
+    .exp-desc { font-size: 12px; margin-top: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .exp-desc.clamped { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; }
+    .cv-viewer { margin-top: 10px; }
+    .cv-viewer iframe { width: 100%; height: 540px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
     .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
     .pill { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); }
     .pill.status { font-weight: 600; border-color: var(--navy); }
@@ -197,6 +214,28 @@
       <div class="kind" id="kind"></div>
     </section>
 
+    <div class="tabs" id="tabs" role="tablist" hidden>
+      <button type="button" role="tab" id="tabBtnRecord" aria-controls="tabRecord" aria-selected="true">Record</button>
+      <button type="button" role="tab" id="tabBtnExp" aria-controls="tabExp" aria-selected="false">Experience &amp; CV</button>
+    </div>
+
+    <div id="tabExp" role="tabpanel" aria-labelledby="tabBtnExp" hidden>
+      <section class="section">
+        <h2>Experience</h2>
+        <div id="expList"></div>
+      </section>
+      <section class="section" id="eduSec" hidden>
+        <h2>Education</h2>
+        <div id="eduList"></div>
+      </section>
+      <section class="section">
+        <h2>CVs in Loxo</h2>
+        <div id="loxoCvs"><span class="muted">Loading…</span></div>
+        <div class="cv-viewer" id="cvViewer" hidden></div>
+      </section>
+    </div>
+
+    <div id="tabRecord" role="tabpanel" aria-labelledby="tabBtnRecord">
     <h2>Loxo</h2>
     <div class="loxo" id="loxo" aria-live="polite"></div>
 
@@ -251,6 +290,7 @@
         <div class="msg" id="tagsMsg" role="status"></div>
       </section>
     </div>
+    </div><!-- /tabRecord -->
   </main>
 
   <section class="empty" id="empty" hidden>
@@ -269,7 +309,7 @@
 
 <script>
   // ---------- Config ----------
-  var PANEL_VERSION = "1.10 (salary editing)";
+  var PANEL_VERSION = "1.11 (experience & CV tab)";
   var LOXO_WEB = "https://pod2.app.loxo.co/agencies/40202";
 
   // From TomTom: Hedgerway's Loxo tag fields
@@ -373,13 +413,27 @@
     return [].concat(v).map(function (x) { return x && typeof x === "object" ? (x.value || x.name || "") : x; })
       .filter(function (x) { return x !== "" && x != null; }).map(String);
   }
+  // From TomTom: Loxo often leaves current_title/current_company empty, so derive them from experience –
+  // the job with no end date (most recent start if several), else the most recently ended job.
+  function deriveCurrentRole(p) {
+    var jobs = (p.job_profiles || []).filter(function (j) { return j && (j.title || j.company); });
+    if (!jobs.length) return { title: "", company: "" };
+    var live = jobs.filter(function (j) { return !j.end_year && !j.end_month; });
+    var pickJob = live.length
+      ? live.sort(function (a, b) { return (b.year || 0) - (a.year || 0) || (b.month || 0) - (a.month || 0); })[0]
+      : jobs.slice().sort(function (a, b) { return (b.end_year || 0) - (a.end_year || 0) || (b.end_month || 0) - (a.end_month || 0); })[0];
+    return { title: pickJob.title || "", company: pickJob.company || "" };
+  }
+
   function personSummary(p) {
-    var company = pick(p, ["current_company", "company.name", "company_name"]);
-    var title = pick(p, ["current_title", "title", "job_title"]);
+    var derived = deriveCurrentRole(p);
+    var company = pick(p, ["current_company", "company.name", "company_name"]) || derived.company;
+    var title = pick(p, ["current_title", "title", "job_title"]) || derived.title;
     var ownerId = p.owned_by_id;
     return {
       id: p.id,
       name: pick(p, ["name"]) || [p.first_name, p.last_name].filter(Boolean).join(" "),
+      title: title, company: company,
       role: title && company ? title + " at " + company : (title || company),
       type: personType(p),
       status: fieldValues(p, STATUS_FIELD)[0] || "",
@@ -647,7 +701,8 @@
       .filter(function (f) { return f[1]; });
     return '<div class="rec-type">' + esc(s.type) + " in Loxo</div>" +
       '<div class="rec-name">' + esc(s.name) + "</div>" +
-      (s.role ? '<div class="rec-role">' + esc(s.role) + "</div>" : "") +
+      (s.title ? '<div class="rec-title">' + esc(s.title) + "</div>" : "") +
+      (s.company ? '<div class="rec-company">' + esc(s.company) + "</div>" : "") +
       (pills.length ? '<div class="pills">' + pills.join("") + "</div>" : "") +
       (facts.length ? '<dl class="facts">' + facts.map(function (f) { return "<dt>" + esc(f[0]) + "</dt><dd>" + esc(f[1]) + "</dd>"; }).join("") + "</dl>" : "") +
       '<div class="actions">' + (canStatus ? '<button class="inline-link" type="button" id="statusOpen" style="margin-top:0">Change status</button>' : "") +
@@ -932,6 +987,111 @@
     renderIntakeRead();
   }
 
+  // ---------- Tabs ----------
+  function setTab(which) {
+    var exp = which === "exp";
+    $("tabRecord").hidden = exp; $("tabExp").hidden = !exp;
+    $("tabBtnRecord").setAttribute("aria-selected", String(!exp));
+    $("tabBtnExp").setAttribute("aria-selected", String(exp));
+    if (exp && current.personId && expLoadedFor !== current.personId) loadExperienceTab(current.personId, current.token);
+  }
+  var expLoadedFor = null;
+
+  // ---------- Experience & CV tab ----------
+  var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  function monthYear(m, y) { return y ? (m >= 1 && m <= 12 ? MONTHS[m - 1] + " " : "") + y : ""; }
+
+  function renderExperience(p) {
+    var jobs = (p.job_profiles || []).filter(function (j) { return j.title || j.company; }).slice().sort(function (a, b) {
+      var ac = !a.end_year && !a.end_month, bc = !b.end_year && !b.end_month;
+      if (ac !== bc) return ac ? -1 : 1;
+      return (b.year || 0) - (a.year || 0) || (b.month || 0) - (a.month || 0);
+    });
+    $("expList").innerHTML = jobs.length ? '<ul class="exp">' + jobs.map(function (j) {
+      var isNow = !j.end_year && !j.end_month;
+      var from = monthYear(j.month, j.year), to = isNow ? "Present" : monthYear(j.end_month, j.end_year);
+      return "<li>" + '<div class="exp-title">' + esc(j.title || "Role not recorded") + (isNow ? '<span class="exp-now">Current</span>' : "") + "</div>" +
+        (j.company ? '<div class="exp-co">' + esc(j.company) + "</div>" : "") +
+        (from || to ? '<div class="exp-dates">' + esc([from, to].filter(Boolean).join(" – ")) + "</div>" : "") +
+        (j.description ? '<div class="exp-desc clamped" title="Click to expand">' + esc(j.description) + "</div>" : "") + "</li>";
+    }).join("") + "</ul>" : '<span class="muted">No experience recorded in Loxo.</span>';
+    $("expList").querySelectorAll(".exp-desc").forEach(function (el) { el.onclick = function () { el.classList.toggle("clamped"); }; });
+
+    var edu = (p.education_profiles || []).filter(function (e) { return e.school || e.degree; })
+      .sort(function (a, b) { return (b.end_year || b.year || 0) - (a.end_year || a.year || 0); });
+    $("eduSec").hidden = !edu.length;
+    $("eduList").innerHTML = '<ul class="exp">' + edu.map(function (e) {
+      var yr = e.end_year || e.year;
+      return '<li><div class="exp-title">' + esc(e.degree || e.school) + "</div>" +
+        (e.degree && e.school ? '<div class="exp-co">' + esc(e.school) + "</div>" : "") +
+        (yr ? '<div class="exp-dates">' + esc(String(yr)) + "</div>" : "") + "</li>";
+    }).join("") + "</ul>";
+  }
+
+  var cvBlobUrl = null;
+  function closeViewer() {
+    if (cvBlobUrl) { URL.revokeObjectURL(cvBlobUrl); cvBlobUrl = null; }
+    $("cvViewer").hidden = true; $("cvViewer").innerHTML = "";
+  }
+
+  function loadExperienceTab(personId, token) {
+    expLoadedFor = personId;
+    var p = recordCache[personId] || {};
+    renderExperience(p);
+    closeViewer();
+    var box = $("loxoCvs");
+    box.innerHTML = '<span class="muted">Loading…</span>';
+    loxoGet("/people/" + personId + "/resumes").then(function (json) {
+      if (token !== current.token) return;
+      showRaw(json);
+      var list = (json.resumes || []).slice().sort(function (a, b) { return new Date(b.created_at || 0) - new Date(a.created_at || 0); });
+      if (!list.length) { box.innerHTML = '<span class="muted">No CVs on this record in Loxo.</span>'; return; }
+      box.innerHTML = '<ul class="cvs">' + list.map(function (r, i) {
+        return '<li><div class="cv-name">' + esc(r.name) + (r.created_at ? "<small>Added " + esc(fmtDate(r.created_at)) + "</small>" : "") +
+          '<div class="cv-msg" id="lcvMsg' + i + '" role="status"></div></div>' +
+          '<button class="secondary" type="button" data-rid="' + esc(r.id) + '" data-i="' + i + '">View</button></li>';
+      }).join("") + "</ul>";
+      box.querySelectorAll("button[data-rid]").forEach(function (b) {
+        b.onclick = function () { viewCv(personId, list[parseInt(b.getAttribute("data-i"), 10)], b, token); };
+      });
+    }, function (err) {
+      if (token !== current.token) return;
+      box.innerHTML = '<p class="muted" style="margin:0">' + esc(err.kind === "worker-old" ? "The Worker needs updating to show CVs (version 9)." :
+        "Loxo didn't return this record's CVs" + (err.status ? " (" + err.status + ")" : "") + ". Open the record in Loxo to see them.") + "</p>";
+    });
+  }
+
+  function viewCv(personId, r, btn, token) {
+    var i = btn.getAttribute("data-i"), msg = $("lcvMsg" + i);
+    btn.disabled = true; btn.textContent = "Opening…"; msg.textContent = ""; msg.className = "cv-msg";
+    fetch(workerBase() + "/people/" + personId + "/resumes/" + r.id + "/file", { headers: { Authorization: authHeader() } })
+      .then(function (res) {
+        if (!res.ok) return res.text().then(function (t) { throw new Error(t && t.length < 140 ? t : "Loxo didn't return the file (" + res.status + ")"); });
+        return res.blob();
+      })
+      .then(function (blob) {
+        if (token !== current.token) return;
+        btn.disabled = false; btn.textContent = "View";
+        closeViewer();
+        var isPdf = /pdf/i.test(blob.type) || /\.pdf$/i.test(r.name);
+        var typed = isPdf && !/pdf/i.test(blob.type) ? new Blob([blob], { type: "application/pdf" }) : blob;
+        cvBlobUrl = URL.createObjectURL(typed);
+        var v = $("cvViewer");
+        v.hidden = false;
+        v.innerHTML = '<div class="actions" style="margin:0 0 8px"><strong style="font-size:13px">' + esc(r.name) + "</strong>" +
+          '<a class="inline-link" style="margin-top:0" href="' + cvBlobUrl + '" download="' + esc(r.name) + '">Download</a>' +
+          '<button class="inline-link" type="button" id="cvClose" style="margin-top:0">Close</button></div>' +
+          (isPdf ? '<iframe title="' + esc(r.name) + '" src="' + cvBlobUrl + '"></iframe>'
+                 : '<p class="muted" style="margin:0">Word files can\'t be previewed in Outlook. Use Download, or open the record in Loxo.</p>');
+        $("cvClose").onclick = closeViewer;
+        v.scrollIntoView({ block: "nearest" });
+      }, function (e) {
+        if (token !== current.token) return;
+        btn.disabled = false; btn.textContent = "View";
+        msg.className = "cv-msg msg err"; msg.textContent = "Couldn't open it. " + e.message;
+      });
+  }
+
   // ---------- CVs on this email → Loxo resumes (file only, nothing parsed) ----------
   var CV_MAX = 10 * 1024 * 1024;
   var cvAdded = {};   // "personId|attachment name|size" -> true, for this session
@@ -1077,6 +1237,7 @@
       setPrimary("Open in Loxo", function () { openRecord(s.id, s.name); });
       current.personId = id;
       $("detail").hidden = false;
+      $("tabs").hidden = false;
       renderCvs(id, s.name, token);
       setupLogForm(id, token);
       renderJobs(p);
@@ -1224,6 +1385,7 @@
     var me = (Office.context.mailbox.userProfile.emailAddress || "").toLowerCase();
     var token = current.token = {};
     $("detail").hidden = true; $("jobsSec").hidden = true; $("tagsSec").hidden = true; $("cvSec").hidden = true;
+    $("tabs").hidden = true; current.personId = null; expLoadedFor = null; setTab("record"); closeViewer();
 
     current.email = person.email;
     current.name = person.displayName && person.displayName.indexOf("@") === -1 ? person.displayName : "";
@@ -1298,6 +1460,8 @@
   $("workerUrl").addEventListener("input", function () { this.setCustomValidity(""); });
   $("primaryBtn").addEventListener("click", function () { if (primaryAction) primaryAction(); });
   $("copyBtn").addEventListener("click", copyEmail);
+  $("tabBtnRecord").addEventListener("click", function () { setTab("record"); });
+  $("tabBtnExp").addEventListener("click", function () { setTab("exp"); });
 
   var officeTimer = setTimeout(function () {
     showEmpty("Hosting works", "This page loaded correctly. Open it from the Loxo Lookup button in Outlook to see sender details.");
