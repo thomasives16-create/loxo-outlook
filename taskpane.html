@@ -194,7 +194,7 @@
 
 <script>
   // ---------- Config ----------
-  var PANEL_VERSION = "1.3 (full record view)";
+  var PANEL_VERSION = "1.4 (data minimised)";
   var LOXO_WEB = "https://pod2.app.loxo.co/agencies/40202";
 
   // From TomTom: Hedgerway's Loxo tag fields
@@ -331,6 +331,21 @@
       }, function () { throw { kind: "network" }; });
   }
 
+  // Searches go in the request body so email addresses never appear in URLs or logs
+  function loxoSearch(query) {
+    return fetch(workerBase() + "/search", {
+      method: "POST",
+      headers: { Authorization: authHeader(), "Content-Type": "application/json" },
+      body: JSON.stringify({ query: query, per_page: 10 })
+    }).then(function (r) {
+      if (r.status === 401) throw { kind: "auth" };
+      if (r.status === 403) throw { kind: "origin" };
+      if (r.status === 404 || r.status === 405) throw { kind: "worker-old" };
+      if (!r.ok) throw { kind: "http", status: r.status };
+      return r.json();
+    }, function () { throw { kind: "network" }; });
+  }
+
   function loxoGraphQL(query, variables) {
     return fetch(workerBase() + "/graphql", {
       method: "POST",
@@ -371,7 +386,7 @@
       if (i >= queries.length) {
         return { status: lastPeople.length ? "possible" : "none", people: lastPeople.slice(0, 3).map(personSummary) };
       }
-      return loxoGet("/people?per_page=10&query=" + encodeURIComponent(queries[i])).then(function (json) {
+      return loxoSearch(queries[i]).then(function (json) {
         showRaw(json);
         var people = listFrom(json);
         if (!people.length) return attempt(i + 1);
@@ -491,7 +506,7 @@
     }, function (err) {
       if (token !== current.token) return;
       var why = err.kind === "network" ? "Couldn't reach the Worker." :
-                err.status === 404 || err.status === 405 ? "The Worker needs updating to version 2." :
+                err.status === 404 || err.status === 405 ? "The Worker is out of date." :
                 "Loxo didn't accept the API key for intake notes.";
       setCheck("Intake notes", "Not available – " + (typeof err.detail === "string" ? err.detail.slice(0, 120) : (err.status || err.kind)));
       box.innerHTML = '<p class="muted" style="margin:0">' + esc(why) + " Open the record in Loxo to see them.</p>";
@@ -522,7 +537,7 @@
   function loadActivity(id, token) {
     var box = $("activity");
     box.innerHTML = '<span class="muted">Loading…</span>';
-    loxoGet("/person_events?person_id=" + encodeURIComponent(id) + "&per_page=30").then(function (json) {
+    loxoGet("/person_events?person_id=" + encodeURIComponent(id)).then(function (json) {
       if (token !== current.token) return;
       var events = (json.person_events || json.events || (Array.isArray(json) ? json : []))
         .filter(function (e) { return e.notes && String(e.notes).trim(); })
@@ -543,7 +558,7 @@
     }, function (err) {
       if (token !== current.token) return;
       box.innerHTML = '<p class="muted" style="margin:0">' +
-        esc(err.kind === "worker-old" ? "The Worker needs updating to version 2 to show activity." : "Couldn't load activity.") + "</p>";
+        esc(err.kind === "worker-old" ? "The Worker is out of date. Paste the latest worker.js into Cloudflare." : "Couldn't load activity.") + "</p>";
     });
   }
 
@@ -580,6 +595,7 @@
       auth: ["Loxo rejected the API key.", "Check the key in Settings."],
       origin: ["The Worker refused this request.", "Its allowed address doesn't match where the panel is hosted."],
       network: ["Can't reach the Worker.", "Check the Worker address in Settings, and your internet connection."],
+      "worker-old": ["The Worker is out of date.", "Paste the latest worker.js into Cloudflare and deploy it."],
       http: ["Loxo returned an error" + (err.status ? " (" + err.status + ")" : "") + ".", "Try again in a moment. If it keeps happening, send a screenshot of Install check."]
     }[err.kind] || ["Something went wrong.", String(err && err.message || err.kind || err)];
     $("loxo").innerHTML = "<p>" + esc(msgs[0]) + "</p><p>" + esc(msgs[1]) + "</p>";
