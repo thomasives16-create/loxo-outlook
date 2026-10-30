@@ -9,49 +9,48 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cabin:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
+    /* TomTom's palette. Muted text, accent text and the Passive blue are lifted slightly for legibility at small sizes. */
     :root {
-      --red: #ED1C24;
-      --navy: #293C5B;
-      --charcoal: #2B2B2B;
-      --grey: #6F7072;
-      --line: #E3E5E9;
-      --wash: #F5F6F8;
-      --bg: #FFFFFF;
-      --ok: #1E7B4F;
+      color-scheme: dark;
+      --bg: #2d2640;        /* TomTom --bg */
+      --bg2: #352e4d;       /* TomTom --bg2: inputs, tab bar */
+      --wash: #3d3558;      /* TomTom --surface: cards */
+      --line: #5a5078;      /* TomTom --border */
+      --charcoal: #ffffff;  /* TomTom --text */
+      --text2: #d4cef5;     /* TomTom --text2 */
+      --grey: #aaa2cc;      /* TomTom --muted, lifted */
+      --navy: #a99cf7;      /* TomTom --accent-h, lifted: headings, links, outlines */
+      --accent: #7b6cf0;    /* TomTom --accent */
+      --red: #e05545;       /* TomTom --update-accent: header rule, tab and heading underline */
+      --ok: #4cde8f;        /* TomTom --success */
+      --blue: #7aa8ff;      /* TomTom --accent2 hover shade */
+      --warn: #ffc45a;      /* TomTom --warn */
+      --danger: #ff6b7a;    /* TomTom --danger */
       --font: "Cabin", "Segoe UI", system-ui, -apple-system, sans-serif;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --navy: #A9BCDB;
-        --charcoal: #E6E6E6;
-        --grey: #A0A2A4;
-        --line: #3A3F47;
-        --wash: #262A31;
-        --bg: #1B1E23;
-        --ok: #6FCF97;
-      }
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; background: var(--bg); color: var(--charcoal); font-family: var(--font); }
     body { padding: 18px 16px 24px; font-size: 14px; line-height: 1.45; }
 
-    .brand { display: flex; align-items: baseline; gap: 8px; margin-bottom: 22px; }
-    .brand strong { font-weight: 700; color: var(--navy); font-size: 13px; letter-spacing: 0.02em; }
+    .brand { display: flex; align-items: baseline; gap: 8px; margin: -18px -16px 20px; padding: 12px 16px 10px;
+             background: linear-gradient(135deg, #3d3558 0%, #2d2640 100%); border-bottom: 2px solid var(--red); }
+    .brand strong { font-weight: 700; font-size: 14px; letter-spacing: -0.2px;
+                    background: linear-gradient(135deg, #ffffff, #c4b8ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
     .brand span { color: var(--grey); font-size: 12px; }
     .brand button { margin-left: auto; }
 
-    .who h1 { margin: 0; font-size: 22px; font-weight: 700; line-height: 1.2; color: var(--navy); overflow-wrap: anywhere; }
+    .who h1 { margin: 0; font-size: 22px; font-weight: 700; line-height: 1.2; color: var(--charcoal); overflow-wrap: anywhere; }
     .who .email { margin-top: 4px; font-size: 14px; overflow-wrap: anywhere; }
     .who .note { margin-top: 6px; font-size: 12px; color: var(--grey); }
 
     .kind { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 3px 9px;
-            border: 1px solid var(--line); border-radius: 999px; font-size: 12px; }
+            border: 1px solid var(--line); border-radius: 999px; font-size: 12px; color: var(--text2); background: rgba(255,255,255,0.06); }
     .kind svg { width: 12px; height: 12px; flex: none; }
 
     h2 { margin: 26px 0 10px; font-size: 14px; font-weight: 700; color: var(--navy);
          padding-bottom: 6px; border-bottom: 2px solid var(--red); display: inline-block; }
 
-    .loxo { background: var(--wash); border-radius: 6px; padding: 12px 14px; font-size: 13px; }
+    .loxo { background: var(--wash); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; font-size: 13px; }
     .loxo p { margin: 0; }
     .loxo p + p { margin-top: 6px; color: var(--grey); }
 
@@ -59,9 +58,10 @@
     .rec-name { font-size: 16px; font-weight: 700; color: var(--charcoal); }
     .rec-title { margin-top: 2px; }
     .rec-company { font-weight: 600; }
-    .tabs { display: flex; gap: 4px; margin-top: 16px; border-bottom: 1px solid var(--line); }
-    .tabs button { all: unset; cursor: pointer; padding: 8px 10px; font-size: 13px; font-weight: 600; color: var(--grey);
-                   border-bottom: 3px solid transparent; margin-bottom: -1px; }
+    .tabs { display: flex; margin: 16px -16px 0; background: var(--bg2); border-bottom: 1px solid var(--line); }
+    .tabs button { all: unset; flex: 1; text-align: center; cursor: pointer; padding: 10px 4px; font-size: 11px; font-weight: 600;
+                   letter-spacing: 0.5px; text-transform: uppercase; color: var(--grey); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .tabs button:hover { color: var(--text2); }
     .tabs button[aria-selected="true"] { color: var(--navy); border-bottom-color: var(--red); }
     .tabs button:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
     .exp { list-style: none; margin: 0; padding: 0; }
@@ -76,15 +76,19 @@
     .cv-viewer { margin-top: 10px; }
     .cv-viewer iframe { width: 100%; height: 540px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
     .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-    .pill { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); }
-    .pill.status { font-weight: 600; border-color: var(--navy); }
+    .pill { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,0.06); color: var(--text2); }
+    .pill.status { font-weight: 600; }
+    .pill.owner { border-color: var(--accent); color: var(--navy); }
+    .pill.s-active { border-color: var(--ok); color: var(--ok); }
+    .pill.s-passive { border-color: var(--blue); color: var(--blue); }
+    .pill.s-immediate { border-color: var(--warn); color: var(--warn); }
     dl.facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 10px 0 0; font-size: 12px; }
     dl.facts dt { color: var(--grey); }
     dl.facts dd { margin: 0; overflow-wrap: anywhere; }
 
     .section { font-size: 13px; }
     .section .muted, .muted { color: var(--grey); }
-    .intake { background: var(--wash); border-radius: 6px; padding: 10px 12px; font-size: 13px; overflow-wrap: anywhere; }
+    .intake { background: var(--wash); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 13px; overflow-wrap: anywhere; }
     .intake.clamped { max-height: 180px; overflow: hidden; position: relative; }
     .intake.clamped::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 40px;
                              background: linear-gradient(to bottom, transparent, var(--wash)); }
@@ -111,6 +115,15 @@
     .cvs .secondary { white-space: nowrap; }
     .cvs .done { font-size: 12px; font-weight: 600; color: var(--ok); white-space: nowrap; }
     .cv-msg { font-size: 12px; margin-top: 4px; }
+    .tel { color: var(--navy); text-decoration: underline; text-underline-offset: 2px; }
+    .picker { margin-top: 10px; }
+    .picker ul { list-style: none; margin: 8px 0 0; padding: 0; max-height: 260px; overflow-y: auto; }
+    .picker li + li { margin-top: 4px; }
+    .picker li button { all: unset; box-sizing: border-box; cursor: pointer; display: block; width: 100%; padding: 7px 10px;
+                        border: 1px solid var(--line); border-radius: 6px; font-size: 13px; }
+    .picker li button:hover { border-color: var(--navy); }
+    .picker li button[aria-pressed="true"] { border: 2px solid var(--navy); padding: 6px 9px; }
+    .picker li small { display: block; color: var(--grey); font-size: 12px; }
     .jobs { list-style: none; margin: 0; padding: 0; }
     .jobs li + li { margin-top: 6px; }
     .jobs button { all: unset; box-sizing: border-box; cursor: pointer; display: block; width: 100%; padding: 7px 10px;
@@ -144,21 +157,21 @@
     .possible { list-style: none; margin: 8px 0 0; padding: 0; }
     .possible li + li { margin-top: 6px; }
     .possible button { all: unset; box-sizing: border-box; cursor: pointer; display: block; width: 100%; padding: 8px 10px;
-                       border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
+                       border: 1px solid var(--line); border-radius: 6px; background: transparent; }
     .possible button:hover { border-color: var(--navy); }
     .possible small { display: block; color: var(--grey); }
 
     .primary { display: block; width: 100%; margin-top: 18px; padding: 10px 14px; border: 0; border-radius: 6px;
-               background: var(--navy); color: var(--bg); font: 600 14px var(--font); cursor: pointer; }
-    .primary:hover { filter: brightness(1.12); }
+               background: linear-gradient(135deg, #7b6cf0, #6558d4); color: #fff; font: 600 14px var(--font); cursor: pointer; }
+    .primary:hover { background: linear-gradient(135deg, #9585f5, #7b6cf0); }
     .link { all: unset; box-sizing: border-box; cursor: pointer; display: block; width: 100%; margin-top: 10px; text-align: center;
             font-size: 13px; color: var(--navy); text-decoration: underline; text-underline-offset: 2px; }
     .secondary { all: unset; box-sizing: border-box; cursor: pointer; display: inline-block; padding: 7px 14px;
                  border: 1.5px solid var(--navy); border-radius: 6px; color: var(--navy); font: 600 13px var(--font); }
-    .secondary:hover { background: var(--wash); }
+    .secondary:hover { background: rgba(255,255,255,0.08); }
     .secondary[disabled] { opacity: .5; cursor: default; }
     .actions { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-top: 8px; }
-    .field { width: 100%; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--charcoal);
+    .field { width: 100%; border: 1px solid var(--line); border-radius: 6px; background: var(--bg2); color: var(--charcoal);
              font: 13px/1.45 var(--font); padding: 7px 9px; }
     textarea.field { resize: vertical; min-height: 84px; }
     button.secondary:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
@@ -166,7 +179,7 @@
     .lbl { display: block; font-size: 12px; color: var(--grey); margin: 0 0 4px; }
     .msg { font-size: 12px; margin-top: 8px; }
     .msg.ok { color: var(--ok); font-weight: 600; }
-    .msg.err { color: var(--charcoal); border-left: 3px solid var(--red); padding-left: 8px; }
+    .msg.err { color: var(--charcoal); border-left: 3px solid var(--danger); padding-left: 8px; }
     .status-edit { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
     .inline-link { all: unset; cursor: pointer; font-size: 12px; color: var(--navy); text-decoration: underline; text-underline-offset: 2px; margin-top: 8px; display: inline-block; }
     .icon-btn { all: unset; cursor: pointer; font-size: 12px; color: var(--grey); text-decoration: underline; text-underline-offset: 2px; }
@@ -174,7 +187,7 @@
 
     form.settings label { display: block; font-size: 12px; font-weight: 600; margin: 14px 0 4px; }
     form.settings input { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px;
-                          background: var(--bg); color: var(--charcoal); font: 13px var(--font); }
+                          background: var(--bg2); color: var(--charcoal); font: 13px var(--font); }
     form.settings .hint { font-size: 12px; color: var(--grey); margin-top: 4px; }
 
     details.checks { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 10px; font-size: 12px; color: var(--grey); }
@@ -283,6 +296,12 @@
       <section class="section" id="jobsSec" hidden>
         <h2>Jobs</h2>
         <div id="jobs"></div>
+        <div id="jobPicker"></div>
+      </section>
+      <section class="section" id="listsSec" hidden>
+        <h2>Lists</h2>
+        <div id="lists"></div>
+        <div id="listPicker"></div>
       </section>
       <section class="section" id="tagsSec" hidden>
         <h2>Tags</h2>
@@ -309,7 +328,7 @@
 
 <script>
   // ---------- Config ----------
-  var PANEL_VERSION = "1.11 (experience & CV tab)";
+  var PANEL_VERSION = "1.12 (phones, jobs & lists, TomTom colours)";
   var LOXO_WEB = "https://pod2.app.loxo.co/agencies/40202";
 
   // From TomTom: Hedgerway's Loxo tag fields
@@ -443,7 +462,8 @@
       salaryRaw: p.salary != null && p.salary !== "" ? Math.round(parseFloat(p.salary)) : "",
       bonusRaw: p.bonus != null && p.bonus !== "" ? parseFloat(p.bonus) : "",
       salary: p.salary ? "£" + Math.round(parseFloat(p.salary)).toLocaleString("en-GB") + (p.bonus != null && p.bonus !== "" ? " + " + parseFloat(p.bonus) + "% bonus" : "") : "",
-      emails: personEmails(p)
+      emails: personEmails(p),
+      phones: (p.phones || []).map(function (ph) { return { value: ph.value, type: ph.type || "" }; }).filter(function (ph) { return ph.value; })
     };
   }
   function listFrom(json) {
@@ -496,7 +516,8 @@
         if (r.status === 409) throw { kind: "changed", message: "Someone changed this in Loxo since you opened it." };
         if (r.status === 429) throw { kind: "http", message: "Loxo is busy. Wait a few seconds and try again." };
         var detail = ""; try { var j = JSON.parse(t); detail = j.detail || ""; } catch (e) { detail = t && t.length < 120 ? t : ""; }
-        throw { kind: "http", message: (detail || "Loxo returned an error (" + r.status + ")") + "." };
+        var m = detail || "Loxo returned an error (" + r.status + ")";
+        throw { kind: "http", message: /[.!?]$/.test(m) ? m : m + "." };
       });
     }, function () { throw { kind: "network", message: "Couldn't reach the Worker." }; });
   }
@@ -694,32 +715,155 @@
 
   function recordHtml(s) {
     var pills = [];
-    if (s.status) pills.push('<span class="pill status">' + esc(s.status) + "</span>");
-    if (s.owner) pills.push('<span class="pill">Owner: ' + esc(s.owner) + "</span>");
+    var sc = /active/i.test(s.status) && !/inactive/i.test(s.status) ? " s-active" : /passive/i.test(s.status) ? " s-passive" : /immediate/i.test(s.status) ? " s-immediate" : "";
+    if (s.status) pills.push('<span class="pill status' + sc + '">' + esc(s.status) + "</span>");
+    if (s.owner) pills.push('<span class="pill owner">Owner: ' + esc(s.owner) + "</span>");
     var canStatus = /candidate/i.test(s.type) || s.status;
-    var facts = [["Location", s.location], ["Salary", s.salary], ["Updated", s.updated], ["Emails", s.emails.join(", ")]]
+    var phoneHtml = (s.phones || []).map(function (ph) {
+      var dial = ph.value.replace(/[^\d+]/g, "");
+      return '<a class="tel" href="tel:' + esc(dial) + '">' + esc(ph.value) + "</a>" + (ph.type ? ' <span class="muted">(' + esc(ph.type) + ")</span>" : "");
+    }).join("<br>");
+    var facts = [["Phone", phoneHtml, true], ["Location", s.location], ["Salary", s.salary], ["Updated", s.updated], ["Emails", s.emails.join(", ")]]
       .filter(function (f) { return f[1]; });
     return '<div class="rec-type">' + esc(s.type) + " in Loxo</div>" +
       '<div class="rec-name">' + esc(s.name) + "</div>" +
       (s.title ? '<div class="rec-title">' + esc(s.title) + "</div>" : "") +
       (s.company ? '<div class="rec-company">' + esc(s.company) + "</div>" : "") +
       (pills.length ? '<div class="pills">' + pills.join("") + "</div>" : "") +
-      (facts.length ? '<dl class="facts">' + facts.map(function (f) { return "<dt>" + esc(f[0]) + "</dt><dd>" + esc(f[1]) + "</dd>"; }).join("") + "</dl>" : "") +
+      (facts.length ? '<dl class="facts">' + facts.map(function (f) { return "<dt>" + esc(f[0]) + "</dt><dd>" + (f[2] ? f[1] : esc(f[1])) + "</dd>"; }).join("") + "</dl>" : "") +
       '<div class="actions">' + (canStatus ? '<button class="inline-link" type="button" id="statusOpen" style="margin-top:0">Change status</button>' : "") +
         '<button class="inline-link" type="button" id="salaryOpen" style="margin-top:0">Edit salary</button></div>' +
       (canStatus ? statusEditHtml(s) : "") + salaryEditHtml(s);
   }
 
   // ---------- Rendering: detail sections ----------
-  function renderJobs(p) {
+  function renderJobs(p, note) {
+    var personId = p.id, token = current.token;
     var jobs = (p.candidate_jobs || []).slice().sort(function (a, b) { return (b.id || 0) - (a.id || 0); });
+    var inIds = jobs.map(function (j) { return j.id; });
     $("jobsSec").hidden = false;
-    if (!jobs.length) { $("jobs").innerHTML = '<span class="muted">Not in any jobs.</span>'; return; }
-    $("jobs").innerHTML = '<ul class="jobs">' + jobs.slice(0, 8).map(function (j) {
+    setupPicker({
+      id: "jp", box: $("jobPicker"), openLabel: "Add to a job", searchLabel: "Search active jobs",
+      load: loadJobs,
+      exclude: function (j) { return inIds.indexOf(j.id) !== -1; },
+      label: function (j) { return j.title; }, sub: function (j) { return j.company; },
+      confirmLabel: function (j) { return "Add to " + (j.title.length > 34 ? j.title.slice(0, 32) + "…" : j.title); },
+      save: function (j) { return loxoWrite("POST", "/people/" + personId + "/jobs", { job_id: j.id }); },
+      done: function (r, j) {
+        refreshRecordAfterWrite(personId).then(function (fresh) {
+          if (token !== current.token) return;
+          renderJobs(fresh, r.already ? ["ok", "Already in " + j.title + "."]
+            : r.verified ? ["ok", "Added to " + j.title + "."]
+            : ["err", "Loxo accepted it, but it isn't showing on the record yet. Check the job in Loxo."]);
+        });
+      }
+    });
+    var noteHtml = note ? '<div class="msg ' + note[0] + '">' + esc(note[1]) + "</div>" : "";
+    if (!jobs.length) { $("jobs").innerHTML = '<span class="muted">Not in any jobs.</span>' + noteHtml; return; }
+    $("jobs").innerHTML = noteHtml.replace('class="msg', 'style="margin:0 0 8px" class="msg') + '<ul class="jobs">' + jobs.slice(0, 8).map(function (j) {
       return '<li><button type="button" data-job="' + esc(j.id) + '">' + esc(j.title || j.name || "Untitled job") + "</button></li>";
     }).join("") + "</ul>" + (jobs.length > 8 ? '<div class="muted" style="margin-top:6px">+' + (jobs.length - 8) + " more</div>" : "");
     $("jobs").querySelectorAll("button[data-job]").forEach(function (b) {
       b.onclick = function () { openUrl(LOXO_WEB + "/jobs/" + b.getAttribute("data-job")); };
+    });
+  }
+
+  // ---------- Add to a job / list (search, pick one, confirm) ----------
+  var jobsCache = null, listsCache = null;
+  function loadJobs() {
+    if (jobsCache) return Promise.resolve(jobsCache);
+    return loxoGet("/jobs").then(function (j) { jobsCache = j.jobs || []; return jobsCache; });
+  }
+  function loadLists() {
+    if (listsCache) return Promise.resolve(listsCache);
+    return loxoGet("/person_lists").then(function (j) { listsCache = (j.lists || []).sort(function (a, b) { return a.name.localeCompare(b.name); }); return listsCache; });
+  }
+
+  // opts: {box, openLabel, searchLabel, load, exclude(ids), label(item), sub(item), confirmLabel(item), save(item) -> Promise, done(result, item)}
+  function setupPicker(o) {
+    var token = current.token;
+    o.box.innerHTML = '<button class="inline-link" type="button" style="margin-top:8px">' + esc(o.openLabel) + "</button>";
+    o.box.firstChild.onclick = function () {
+      o.box.innerHTML = '<div class="picker"><label class="lbl" for="' + o.id + 'Q">' + esc(o.searchLabel) + "</label>" +
+        '<input class="field" id="' + o.id + 'Q" autocomplete="off" placeholder="Start typing…">' +
+        '<ul id="' + o.id + 'R"><li class="muted" style="font-size:12px">Loading…</li></ul>' +
+        '<div class="actions"><button class="secondary" type="button" id="' + o.id + 'Go" disabled>Choose one above</button>' +
+        '<button class="inline-link" type="button" id="' + o.id + 'X" style="margin-top:0">Cancel</button></div>' +
+        '<div class="msg" id="' + o.id + 'M" role="status"></div></div>';
+      var q = $(o.id + "Q"), res = $(o.id + "R"), go = $(o.id + "Go"), msg = $(o.id + "M"), chosen = null, all = [];
+      $(o.id + "X").onclick = function () { setupPicker(o); };
+      function draw() {
+        var t = q.value.trim().toLowerCase();
+        var hits = all.filter(function (it) { return !o.exclude(it) && (!t || (o.label(it) + " " + o.sub(it)).toLowerCase().indexOf(t) !== -1); });
+        res.innerHTML = hits.length ? hits.slice(0, 40).map(function (it) {
+          return '<li><button type="button" data-id="' + esc(it.id) + '" aria-pressed="' + String(chosen && chosen.id === it.id) + '">' +
+            esc(o.label(it)) + (o.sub(it) ? "<small>" + esc(o.sub(it)) + "</small>" : "") + "</button></li>";
+        }).join("") + (hits.length > 40 ? '<li class="muted" style="font-size:12px">Keep typing to narrow ' + hits.length + " results.</li>" : "")
+          : '<li class="muted" style="font-size:12px">' + (all.length ? "Nothing matches." : "None found in Loxo.") + "</li>";
+        res.querySelectorAll("button[data-id]").forEach(function (b) {
+          b.onclick = function () {
+            chosen = all.find(function (it) { return String(it.id) === b.getAttribute("data-id"); });
+            go.disabled = false; go.textContent = o.confirmLabel(chosen); msg.textContent = ""; draw();
+          };
+        });
+      }
+      q.oninput = draw;
+      o.load().then(function (items) { if (token !== current.token) return; all = items; draw(); q.focus(); },
+        function (err) {
+          if (token !== current.token) return;
+          res.innerHTML = '<li class="muted" style="font-size:12px">' + esc(err.kind === "worker-old" ? "The Worker needs updating (version 10)." : "Couldn't load from Loxo.") + "</li>";
+        });
+      go.onclick = function () {
+        if (!chosen) return;
+        var item = chosen;
+        go.disabled = true; go.textContent = "Adding…";
+        o.save(item).then(function (r) {
+          if (token !== current.token) return;
+          o.done(r, item);
+        }, function (err) {
+          if (token !== current.token) return;
+          go.disabled = false; go.textContent = o.confirmLabel(item);
+          msg.className = "msg err"; msg.textContent = "Not added. " + (err.message || "");
+        });
+      };
+    };
+  }
+
+  function refreshRecordAfterWrite(personId, after) {
+    delete recordCache[personId];
+    return getRecord(personId).then(function (fresh) { if (after) after(fresh); return fresh; });
+  }
+
+  function renderLists(p, note) {
+    var personId = p.id, token = current.token;
+    var mine = (p.list_ids || []).map(function (x) { return parseInt(x, 10); });
+    $("listsSec").hidden = false;
+    function draw(names) {
+      $("lists").innerHTML = (mine.length
+        ? '<div class="pills" style="margin-top:0">' + mine.map(function (id) {
+            var l = (names || []).find(function (x) { return x.id === id; });
+            return '<span class="pill">' + esc(l ? l.name : "List " + id) + "</span>";
+          }).join("") + "</div>"
+        : '<span class="muted">Not on any lists.</span>') +
+        (note ? '<div class="msg ' + note[0] + '">' + esc(note[1]) + "</div>" : "");
+    }
+    draw(listsCache);
+    if (mine.length && !listsCache) loadLists().then(function (l) { if (token === current.token) draw(l); }, function () {});
+    setupPicker({
+      id: "lp", box: $("listPicker"), openLabel: "Add to a list", searchLabel: "Search lists",
+      load: loadLists,
+      exclude: function (l) { return mine.indexOf(l.id) !== -1; },
+      label: function (l) { return l.name; }, sub: function () { return ""; },
+      confirmLabel: function (l) { return "Add to " + l.name; },
+      save: function (l) { return loxoWrite("POST", "/people/" + personId + "/lists", { list_id: l.id }); },
+      done: function (r, l) {
+        refreshRecordAfterWrite(personId).then(function (fresh) {
+          if (token !== current.token) return;
+          renderLists(fresh, r.already ? ["ok", "Already on " + l.name + "."]
+            : r.lost && r.lost.length ? ["err", "Added to " + l.name + ", but Loxo dropped " + r.lost.length + " other list(s). Check the record in Loxo."]
+            : ["ok", "Added to " + l.name + "."]);
+        });
+      }
     });
   }
 
@@ -1241,6 +1385,7 @@
       renderCvs(id, s.name, token);
       setupLogForm(id, token);
       renderJobs(p);
+      renderLists(p);
       renderTags(p);
       loadIntake(id, token);
       loadActivity(id, token);
@@ -1384,7 +1529,7 @@
   function showPerson(person, note) {
     var me = (Office.context.mailbox.userProfile.emailAddress || "").toLowerCase();
     var token = current.token = {};
-    $("detail").hidden = true; $("jobsSec").hidden = true; $("tagsSec").hidden = true; $("cvSec").hidden = true;
+    $("detail").hidden = true; $("jobsSec").hidden = true; $("listsSec").hidden = true; $("tagsSec").hidden = true; $("cvSec").hidden = true;
     $("tabs").hidden = true; current.personId = null; expLoadedFor = null; setTab("record"); closeViewer();
 
     current.email = person.email;
