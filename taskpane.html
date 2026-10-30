@@ -330,7 +330,7 @@
 
 <script>
   // ---------- Config ----------
-  var PANEL_VERSION = "1.14 (add to job fix)";
+  var PANEL_VERSION = "1.15 (add to job via person update)";
   var LOXO_WEB = "https://pod2.app.loxo.co/agencies/40202";
 
   // From TomTom: Hedgerway's Loxo tag fields
@@ -757,7 +757,9 @@
       done: function (r, j) {
         refreshRecordAfterWrite(personId).then(function (fresh) {
           if (token !== current.token) return;
+          var lost = (r.lost || []).map(function (x) { return x.title; });
           renderJobs(fresh, r.already ? ["ok", "Already in " + j.title + "."]
+            : lost.length ? ["err", (r.verified ? "Added to " + j.title + ", but " : "") + "Loxo removed them from: " + lost.join(", ") + ". Add them back to " + (lost.length > 1 ? "those jobs" : "that job") + " in Loxo now, and tell Tom."]
             : r.verified ? ["ok", "Added to " + j.title + "."]
             : ["err", "Loxo accepted it, but it isn't showing on the record yet. Check the job in Loxo."]);
         });
