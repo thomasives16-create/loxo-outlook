@@ -169,6 +169,7 @@
     .secondary { all: unset; box-sizing: border-box; cursor: pointer; display: inline-block; padding: 7px 14px;
                  border: 1.5px solid var(--navy); border-radius: 6px; color: var(--navy); font: 600 13px var(--font); }
     .secondary:hover { background: rgba(255,255,255,0.08); }
+    .secondary.wide { display: block; width: 100%; text-align: center; margin-top: 8px; padding: 8px 14px; }
     .secondary[disabled] { opacity: .5; cursor: default; }
     .actions { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-top: 8px; }
     .field { width: 100%; border: 1px solid var(--line); border-radius: 6px; background: var(--bg2); color: var(--charcoal);
@@ -253,6 +254,7 @@
     <div class="loxo" id="loxo" aria-live="polite"></div>
 
     <button class="primary" id="primaryBtn" type="button" hidden></button>
+    <button class="secondary wide" id="linkedinBtn" type="button" hidden>Open LinkedIn profile</button>
     <button class="link" id="copyBtn" type="button">Copy email address</button>
 
     <section class="section" id="threadSec" hidden>
@@ -328,7 +330,7 @@
 
 <script>
   // ---------- Config ----------
-  var PANEL_VERSION = "1.12 (phones, jobs & lists, TomTom colours)";
+  var PANEL_VERSION = "1.14 (add to job fix)";
   var LOXO_WEB = "https://pod2.app.loxo.co/agencies/40202";
 
   // From TomTom: Hedgerway's Loxo tag fields
@@ -512,7 +514,10 @@
       if (r.ok) return r.json().catch(function () { return {}; });
       return r.text().then(function (t) {
         if (r.status === 401) throw { kind: "auth", message: "Loxo rejected the API key." };
-        if (r.status === 404 || r.status === 405) throw { kind: "worker-old", message: "The Worker is out of date. Paste the latest worker.js into Cloudflare." };
+        // Only the Worker's own plain-text refusal means it's out of date; a JSON 404 is Loxo saying "not found"
+        var isJson = false; try { JSON.parse(t); isJson = true; } catch (e) {}
+        if ((r.status === 404 || r.status === 405) && !isJson) throw { kind: "worker-old", message: "The Worker is out of date. Paste the latest worker.js into Cloudflare." };
+        if (r.status === 404) throw { kind: "http", message: "Loxo couldn't find that record or job. Try again, or check it in Loxo." };
         if (r.status === 409) throw { kind: "changed", message: "Someone changed this in Loxo since you opened it." };
         if (r.status === 429) throw { kind: "http", message: "Loxo is busy. Wait a few seconds and try again." };
         var detail = ""; try { var j = JSON.parse(t); detail = j.detail || ""; } catch (e) { detail = t && t.length < 120 ? t : ""; }
@@ -1379,6 +1384,9 @@
       if (cache[current.email]) { cache[current.email].summary = s; renderThread(); }
       showCard(s);
       setPrimary("Open in Loxo", function () { openRecord(s.id, s.name); });
+      var li = /^https:\/\/([a-z]{2,3}\.)?linkedin\.com\/in\//i.test(p.linkedin_url || "") ? p.linkedin_url : "";
+      $("linkedinBtn").hidden = !li;
+      $("linkedinBtn").onclick = li ? function () { openUrl(li); } : null;
       current.personId = id;
       $("detail").hidden = false;
       $("tabs").hidden = false;
@@ -1530,7 +1538,7 @@
     var me = (Office.context.mailbox.userProfile.emailAddress || "").toLowerCase();
     var token = current.token = {};
     $("detail").hidden = true; $("jobsSec").hidden = true; $("listsSec").hidden = true; $("tagsSec").hidden = true; $("cvSec").hidden = true;
-    $("tabs").hidden = true; current.personId = null; expLoadedFor = null; setTab("record"); closeViewer();
+    $("tabs").hidden = true; $("linkedinBtn").hidden = true; current.personId = null; expLoadedFor = null; setTab("record"); closeViewer();
 
     current.email = person.email;
     current.name = person.displayName && person.displayName.indexOf("@") === -1 ? person.displayName : "";
